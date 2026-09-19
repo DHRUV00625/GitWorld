@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, Sparkles, ArrowRight } from 'lucide-react';
+import { X, Mail, Lock, ArrowRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -31,7 +31,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
 
     try {
       if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
         });
@@ -39,14 +39,14 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
         if (error) {
           setErrorMsg(error.message);
         } else {
-          setSuccessMsg('Account created successfully! Redirecting to your journey...');
+          setSuccessMsg('ACCOUNT CREATED! REDIRECTING TO YOUR JOURNEY...');
           setTimeout(() => {
             onClose();
             router.push('/journey');
-          }, 1200);
+          }, 1000);
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -54,7 +54,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
         if (error) {
           setErrorMsg(error.message);
         } else {
-          setSuccessMsg('Welcome back! Redirecting to your journey...');
+          setSuccessMsg('WELCOME BACK! REDIRECTING TO YOUR JOURNEY...');
           setTimeout(() => {
             onClose();
             router.push('/journey');
@@ -62,7 +62,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
         }
       }
     } catch (err: any) {
-      setErrorMsg(err?.message || 'An unexpected error occurred.');
+      setErrorMsg(err?.message || 'AN UNEXPECTED ERROR OCCURRED.');
     } finally {
       setLoading(false);
     }
@@ -77,41 +77,38 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 bg-[#09090B]/70 backdrop-blur-sm"
           />
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-md bg-zinc-950/90 border border-zinc-800/80 rounded-2xl shadow-2xl p-6 sm:p-8 overflow-hidden z-10"
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="relative w-full max-w-md bg-[#F8F4E8] border-2 border-[#09090B] rounded-[24px] shadow-[8px_8px_0px_0px_#09090B] p-6 sm:p-8 overflow-hidden z-10 font-body"
           >
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none" />
-
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white bg-zinc-900/60 hover:bg-zinc-800 rounded-full transition-colors"
+              className="absolute top-5 right-5 p-2 text-[#09090B] bg-[#F8F4E8] hover:bg-[#D2E823] border-2 border-[#09090B] rounded-[8px] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
 
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center p-2.5 mb-3 bg-gradient-to-tr from-emerald-500/20 via-purple-500/20 to-indigo-500/20 rounded-xl border border-zinc-700/50">
-                <Sparkles className="w-6 h-6 text-emerald-400" />
-              </div>
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-                {mode === 'signup' ? 'Begin Your Git Journey' : 'Welcome Back to GitWorld'}
+            <div className="text-left mb-6">
+              <span className="inline-block px-3 py-1 bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-full text-[11px] font-mono-brutal font-bold tracking-wider mb-3 shadow-[2px_2px_0px_0px_#09090B]">
+                AUTHENTICATION
+              </span>
+              <h3 className="font-heading text-2xl text-[#09090B] tracking-tighter">
+                {mode === 'signup' ? 'JOIN GITWORLD' : 'WELCOME BACK'}
               </h3>
-              <p className="text-sm text-zinc-400 mt-1">
+              <p className="text-xs text-[#09090B]/70 mt-1 font-medium">
                 {mode === 'signup'
-                  ? 'Create an account to track your quests & progress.'
-                  : 'Sign in to continue learning Git in an interactive world.'}
+                  ? 'Create your account to start interactive visual Git quests.'
+                  : 'Log in to continue your Git journey.'}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 p-1 bg-zinc-900/80 border border-zinc-800/80 rounded-xl mb-6">
+            <div className="grid grid-cols-2 p-1 bg-white border-2 border-[#09090B] rounded-[12px] mb-6 shadow-[2px_2px_0px_0px_#09090B]">
               <button
                 type="button"
                 onClick={() => {
@@ -119,13 +116,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
                   setErrorMsg(null);
                   setSuccessMsg(null);
                 }}
-                className={`py-2 text-xs font-semibold rounded-lg transition-all ${
+                className={`py-2 text-xs font-heading tracking-tight rounded-[8px] transition-all cursor-pointer ${
                   mode === 'signup'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-[#09090B] text-[#D2E823]'
+                    : 'text-[#09090B] hover:bg-[#F8F4E8]'
                 }`}
               >
-                Create Account
+                SIGN UP
               </button>
               <button
                 type="button"
@@ -134,21 +131,21 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
                   setErrorMsg(null);
                   setSuccessMsg(null);
                 }}
-                className={`py-2 text-xs font-semibold rounded-lg transition-all ${
+                className={`py-2 text-xs font-heading tracking-tight rounded-[8px] transition-all cursor-pointer ${
                   mode === 'login'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-[#09090B] text-[#D2E823]'
+                    : 'text-[#09090B] hover:bg-[#F8F4E8]'
                 }`}
               >
-                Sign In
+                LOG IN
               </button>
             </div>
 
             {errorMsg && (
               <motion.div
-                initial={{ opacity: 0, y: -8 }}
+                initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-4 p-3 bg-red-950/60 border border-red-800/60 rounded-xl text-xs text-red-300"
+                className="mb-4 p-3 bg-red-100 border-2 border-[#09090B] rounded-[8px] text-xs font-mono-brutal text-red-900 shadow-[2px_2px_0px_0px_#09090B]"
               >
                 {errorMsg}
               </motion.div>
@@ -156,9 +153,9 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
 
             {successMsg && (
               <motion.div
-                initial={{ opacity: 0, y: -8 }}
+                initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-4 p-3 bg-emerald-950/60 border border-emerald-800/60 rounded-xl text-xs text-emerald-300"
+                className="mb-4 p-3 bg-[#D2E823] border-2 border-[#09090B] rounded-[8px] text-xs font-mono-brutal text-[#09090B] font-bold shadow-[2px_2px_0px_0px_#09090B]"
               >
                 {successMsg}
               </motion.div>
@@ -166,35 +163,35 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
 
             <form onSubmit={handleAuth} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Email Address
+                <label className="block text-xs font-heading text-[#09090B] mb-1 tracking-tight">
+                  EMAIL ADDRESS
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#09090B]/60" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="explorer@gitworld.dev"
-                    className="w-full pl-10 pr-4 py-2.5 bg-zinc-900/90 border border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-sm text-white placeholder-zinc-500 outline-none transition-all"
+                    placeholder="developer@gitworld.dev"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-[#09090B] rounded-[8px] text-sm text-[#09090B] font-medium outline-none focus:bg-[#F8F4E8] shadow-[2px_2px_0px_0px_#09090B] transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Password
+                <label className="block text-xs font-heading text-[#09090B] mb-1 tracking-tight">
+                  PASSWORD
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#09090B]/60" />
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2.5 bg-zinc-900/90 border border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl text-sm text-white placeholder-zinc-500 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-[#09090B] rounded-[8px] text-sm text-[#09090B] font-medium outline-none focus:bg-[#F8F4E8] shadow-[2px_2px_0px_0px_#09090B] transition-colors"
                   />
                 </div>
               </div>
@@ -202,22 +199,18 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-zinc-950 font-bold rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="w-full mt-4 py-3 px-4 bg-[#09090B] text-[#D2E823] font-heading text-sm tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[4px_4px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
               >
                 {loading ? (
-                  <span className="inline-block w-5 h-5 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
+                  <span className="inline-block w-4 h-4 border-2 border-[#D2E823] border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>{mode === 'signup' ? 'Start Learning Journey' : 'Sign In to Journey'}</span>
+                    <span>{mode === 'signup' ? 'START EXPLORING' : 'LOG IN TO QUEST'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
             </form>
-
-            <p className="mt-6 text-center text-xs text-zinc-500">
-              By proceeding, you agree to master Git commands and have fun along the way! 🚀
-            </p>
           </motion.div>
         </div>
       )}
