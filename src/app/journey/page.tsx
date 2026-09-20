@@ -117,11 +117,11 @@ export default function JourneyTimelinePage() {
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
-  // Scroll Progress Hook
-  const { scrollYProgress } = useScroll({
-    target: timelineContainerRef,
-    offset: ['start start', 'end end'],
-  });
+  // Scroll Progress Hook: Track window scroll so animation starts IMMEDIATELY upon scrolling
+  const { scrollYProgress } = useScroll();
+
+  // Map scroll progress to pathLength so the line draws immediately on the first scroll pixel
+  const pathLength = useTransform(scrollYProgress, [0, 0.9], [0, 1], { clamp: true });
 
   // Track scroll percentage for HUD indicator
   useEffect(() => {
@@ -429,7 +429,7 @@ export default function JourneyTimelinePage() {
               strokeLinecap="square"
               strokeLinejoin="miter"
               vectorEffect="non-scaling-stroke"
-              style={{ pathLength: scrollYProgress }}
+              style={{ pathLength }}
             />
 
             {/* Commit Junction Anchor Dots */}
@@ -493,7 +493,7 @@ export default function JourneyTimelinePage() {
               strokeLinecap="square"
               strokeLinejoin="miter"
               vectorEffect="non-scaling-stroke"
-              style={{ pathLength: scrollYProgress }}
+              style={{ pathLength }}
             />
           </svg>
         </div>
