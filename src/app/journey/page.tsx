@@ -1,29 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import JourneyHeader from '@/components/JourneyHeader';
+import QuestModal, { QuestNodeData } from '@/components/QuestModal';
+import NoiseOverlay from '@/components/NoiseOverlay';
+import CustomCursor from '@/components/CustomCursor';
 import { motion } from 'framer-motion';
+import { createClient } from '@/utils/supabase/client';
 import {
-  Compass,
-  Trophy,
-  GitBranch,
   GitCommit,
+  GitBranch,
   GitPullRequest,
+  Terminal,
   CheckCircle2,
   Lock,
   Zap,
-  LogOut,
-  Sparkles,
   ArrowRight,
   Shield,
+  Layers,
+  Flame,
+  ArrowDown,
 } from 'lucide-react';
-import { createClient } from '@/utils/supabase/client';
 
-export default function JourneyPage() {
+export default function JourneyFlowchartPage() {
+  const [selectedQuest, setSelectedQuest] = useState<QuestNodeData | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
@@ -32,227 +33,416 @@ export default function JourneyPage() {
       if (data?.user?.email) {
         setUserEmail(data.user.email);
       }
-      setLoading(false);
     }
     getUser();
   }, []);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
+  const quests: Record<string, QuestNodeData> = {
+    init: {
+      id: 'init',
+      stage: 'MODULE 01',
+      title: '01. GIT INIT',
+      branch: 'main',
+      description: 'Create the repository genesis block, inspect hidden .git configuration, and verify status.',
+      commands: ['git init gitworld-genesis', 'cd gitworld-genesis', 'git status'],
+      xp: 100,
+      status: 'completed',
+      badge: 'ROOT GENESIS',
+    },
+    commit: {
+      id: 'commit',
+      stage: 'MODULE 02',
+      title: '02. STAGING & COMMIT',
+      branch: 'main',
+      description: 'Master the three Git states: Working Directory, Staging Index, and Immutable Commit Object.',
+      commands: ['git add .', 'git commit -m "feat: initial commit"'],
+      xp: 150,
+      status: 'completed',
+      badge: 'STAGING INDEX',
+    },
+    logs: {
+      id: 'logs',
+      stage: 'MODULE 03',
+      title: '03. LOGS & DIFFS',
+      branch: 'main',
+      description: 'Traverse the Directed Acyclic Graph, inspect parent pointer hashes, and compare delta diffs.',
+      commands: ['git log --oneline --graph --all', 'git diff HEAD~1'],
+      xp: 175,
+      status: 'active',
+      badge: 'ACTIVE QUEST',
+    },
+    branch_create: {
+      id: 'branch_create',
+      stage: 'MODULE 04',
+      title: '04. BRANCH ISOLATION',
+      branch: 'feature/sandbox',
+      description: 'Spawn a parallel universe branch without touching main. Understand HEAD pointer movement.',
+      commands: ['git checkout -b feature/sandbox', 'git branch -v'],
+      xp: 200,
+      status: 'active',
+      badge: 'PARALLEL TRACK',
+    },
+    feature_work: {
+      id: 'feature_work',
+      stage: 'MODULE 05',
+      title: '05. FEATURE WORK',
+      branch: 'feature/sandbox',
+      description: 'Craft isolated commits in the feature branch and inspect divergence from main trunk.',
+      commands: ['git commit -am "feat: add experimental sandboxes"'],
+      xp: 225,
+      status: 'locked',
+      badge: 'BRANCH WORK',
+    },
+    merge_ff: {
+      id: 'merge_ff',
+      stage: 'MODULE 06',
+      title: '06. FAST-FORWARD MERGE',
+      branch: 'main',
+      description: 'Bring feature progress back to main cleanly when no divergence has occurred.',
+      commands: ['git checkout main', 'git merge feature/sandbox'],
+      xp: 250,
+      status: 'locked',
+      badge: 'SYNTHESIS',
+    },
+    divergent: {
+      id: 'divergent',
+      stage: 'MODULE 07',
+      title: '07. DIVERGENT HISTORIES',
+      branch: 'hotfix/urgent-patch',
+      description: 'Simulate concurrent team workflows where main and side branches both advance independently.',
+      commands: ['git checkout -b hotfix/urgent-patch', 'git commit -am "fix: urgent security update"'],
+      xp: 275,
+      status: 'locked',
+      badge: 'DIVERGENCE',
+    },
+    conflicts: {
+      id: 'conflicts',
+      stage: 'MODULE 08',
+      title: '08. CONFLICT RESOLUTION',
+      branch: 'main',
+      description: 'Face the crucible: inspect conflicting markers (<<<<<<< HEAD), resolve diffs, and seal the merge commit.',
+      commands: ['git merge hotfix/urgent-patch', 'git add .', 'git commit'],
+      xp: 350,
+      status: 'locked',
+      badge: 'CRUCIBLE',
+    },
+    rebase: {
+      id: 'rebase',
+      stage: 'MODULE 09',
+      title: '09. INTERACTIVE REBASE',
+      branch: 'feature/clean-history',
+      description: 'Rewind and replay commits onto new bases. Squash messy intermediate commits into pristine history.',
+      commands: ['git rebase -i HEAD~3', 'git rebase --continue'],
+      xp: 400,
+      status: 'locked',
+      badge: 'LINEAR DAG',
+    },
+    remote_sync: {
+      id: 'remote_sync',
+      stage: 'MODULE 10',
+      title: '10. REMOTE SYNC & PR',
+      branch: 'main',
+      description: 'Connect local branches to GitHub remotes, manage upstream tracking, and open pull requests.',
+      commands: ['git remote add origin <url>', 'git push -u origin main'],
+      xp: 500,
+      status: 'locked',
+      badge: 'FINAL QUEST',
+    },
   };
 
-  const questNodes = [
-    {
-      id: 1,
-      title: 'Quest 1: The First Repository',
-      description: 'Initialize a new repository and inspect git status.',
-      command: 'git init',
-      status: 'completed',
-      xp: 100,
-      icon: GitCommit,
-      color: 'from-emerald-500 to-teal-600',
-    },
-    {
-      id: 2,
-      title: 'Quest 2: Staging & Committing',
-      description: 'Stage files with git add and craft your first commit.',
-      command: 'git add . && git commit -m "feat: init"',
-      status: 'active',
-      xp: 150,
-      icon: GitBranch,
-      color: 'from-teal-500 to-cyan-600',
-    },
-    {
-      id: 3,
-      title: 'Quest 3: Branching Multiverse',
-      description: 'Create parallel universe feature branches safely.',
-      command: 'git checkout -b feature/magic',
-      status: 'locked',
-      xp: 200,
-      icon: Sparkles,
-      color: 'from-cyan-500 to-blue-600',
-    },
-    {
-      id: 4,
-      title: 'Quest 4: Resolving Conflicts',
-      description: 'Master merge conflicts and rebase with confidence.',
-      command: 'git merge feature/magic',
-      status: 'locked',
-      xp: 250,
-      icon: GitPullRequest,
-      color: 'from-blue-500 to-indigo-600',
-    },
-    {
-      id: 5,
-      title: 'Quest 5: GitHub Remote Sync',
-      description: 'Connect local repos to GitHub and send pull requests.',
-      command: 'git push -u origin main',
-      status: 'locked',
-      xp: 300,
-      icon: Trophy,
-      color: 'from-indigo-500 to-purple-600',
-    },
-  ];
+  const renderNodeCard = (key: string) => {
+    const q = quests[key];
+    const isUnlocked = q.status !== 'locked';
 
-  return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-emerald-500 selection:text-zinc-950">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-zinc-950/70 border-b border-zinc-800/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="p-2 bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 rounded-xl border border-emerald-500/30">
-              <Compass className="w-5 h-5 text-emerald-400" />
-            </div>
-            <span className="text-xl font-extrabold bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-              GitWorld Journey
+    return (
+      <div
+        onClick={() => setSelectedQuest(q)}
+        className={`w-full max-w-[340px] sm:max-w-[380px] p-5 rounded-[12px] border-2 border-[#09090B] transition-all duration-150 cursor-pointer text-left relative ${
+          isUnlocked
+            ? 'bg-[#D2E823] text-[#09090B] shadow-[4px_4px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none'
+            : 'bg-[#F8F4E8] text-[#09090B] opacity-60 grayscale shadow-[3px_3px_0px_0px_#09090B]'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-3 border-b-2 border-[#09090B]/20 pb-2">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono-brutal font-bold text-[10px] uppercase bg-black text-white px-2 py-0.5 rounded">
+              {q.stage}
             </span>
-          </Link>
+            <span className="font-mono-brutal text-[11px] font-bold text-[#09090B]">
+              {q.badge}
+            </span>
+          </div>
 
-          <div className="flex items-center gap-4">
-            {userEmail ? (
-              <div className="flex items-center gap-3">
-                <span className="hidden sm:inline text-xs font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-3 py-1 rounded-full">
-                  {userEmail}
-                </span>
-                <button
-                  onClick={handleSignOut}
-                  className="px-3 py-1.5 text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg transition-colors flex items-center gap-1.5"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            ) : (
-              <Link
-                href="/"
-                className="px-3.5 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white bg-zinc-900 border border-zinc-800 rounded-lg"
-              >
-                Back to Home
-              </Link>
+          <div className="flex items-center gap-1">
+            {q.status === 'completed' && (
+              <span className="flex items-center gap-1 text-[10px] font-mono-brutal font-bold bg-white text-[#09090B] px-2 py-0.5 rounded border border-[#09090B]">
+                <CheckCircle2 className="w-3 h-3 text-[#09090B]" /> DONE
+              </span>
+            )}
+            {q.status === 'active' && (
+              <span className="flex items-center gap-1 text-[10px] font-mono-brutal font-bold bg-white text-[#09090B] px-2 py-0.5 rounded border border-[#09090B]">
+                <Zap className="w-3 h-3 text-[#09090B] animate-bounce" /> ACTIVE
+              </span>
+            )}
+            {q.status === 'locked' && (
+              <span className="flex items-center gap-1 text-[10px] font-mono-brutal font-bold bg-zinc-300 text-zinc-700 px-2 py-0.5 rounded border border-[#09090B]">
+                <Lock className="w-3 h-3 text-zinc-700" /> LOCKED
+              </span>
             )}
           </div>
         </div>
-      </header>
 
-      {/* Main Journey Map */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* User Stats Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-800/80 rounded-2xl p-6 mb-10 shadow-2xl relative overflow-hidden"
-        >
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <h4 className="font-heading text-lg sm:text-xl text-[#09090B] tracking-tight leading-snug">
+          {q.title}
+        </h4>
 
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-800/60 text-xs text-emerald-400 font-mono mb-2">
+        <p className="text-xs text-[#09090B]/85 font-medium mt-1.5 line-clamp-2">
+          {q.description}
+        </p>
+
+        <div className="mt-4 pt-3 border-t-2 border-[#09090B]/15 flex items-center justify-between text-xs font-mono-brutal">
+          <span className="font-bold bg-[#09090B] text-white px-2 py-0.5 rounded text-[11px]">
+            {q.commands[0]}
+          </span>
+          <span className="font-bold text-[#09090B]">
+            +{q.xp} XP
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F8F4E8] text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative pb-24">
+      <NoiseOverlay />
+      <CustomCursor />
+      <JourneyHeader userEmail={userEmail} xp={250} level={2} />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-8 sm:pt-12 w-full">
+        <div className="bg-white border-2 border-[#09090B] rounded-[16px] p-6 sm:p-8 shadow-[6px_6px_0px_0px_#09090B] mb-12">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#D2E823] text-[#09090B] font-mono-brutal font-bold text-xs uppercase border-2 border-[#09090B] rounded-full shadow-[2px_2px_0px_0px_#09090B]">
                 <Shield className="w-3.5 h-3.5" />
-                <span>Level 2 Git Explorer</span>
+                <span>DIRECTED ACYCLIC GRAPH // CURRICULUM</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-                Welcome to your Interactive Quest Map
+              <h1 className="font-heading text-3xl sm:text-5xl text-[#09090B] tracking-tighter">
+                GIT BRANCH FLOWCHART
               </h1>
-              <p className="text-sm text-zinc-400 mt-1">
-                Complete quests to unlock advanced branch manipulation & repository tools.
+              <p className="text-sm text-[#09090B]/80 font-medium max-w-2xl leading-relaxed">
+                Explore version control structured as an authentic Git branch tree. Follow the main trunk, spawn feature branches with sharp 90° splits, and conquer merge conflict crucible nodes.
               </p>
             </div>
 
-            {/* EXP Bar */}
-            <div className="w-full md:w-72 bg-zinc-950 p-4 rounded-xl border border-zinc-800/80">
-              <div className="flex justify-between items-center text-xs mb-2">
-                <span className="text-zinc-400 font-medium">Rank Progress</span>
-                <span className="text-emerald-400 font-bold">250 / 1000 XP</span>
+            <div className="flex flex-wrap sm:flex-nowrap gap-3 sm:gap-4 w-full lg:w-auto">
+              <div className="flex-1 sm:w-32 bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] p-3 text-center shadow-[3px_3px_0px_0px_#09090B]">
+                <span className="font-mono-brutal text-[10px] text-[#09090B]/70 uppercase block font-bold">BRANCHES</span>
+                <span className="font-heading text-xl sm:text-2xl text-[#09090B]">03</span>
               </div>
-              <div className="w-full bg-zinc-800 rounded-full h-2.5 overflow-hidden">
-                <div className="bg-gradient-to-r from-emerald-400 to-cyan-400 h-2.5 rounded-full w-[25%]" />
+              <div className="flex-1 sm:w-32 bg-[#D2E823] border-2 border-[#09090B] rounded-[12px] p-3 text-center shadow-[3px_3px_0px_0px_#09090B]">
+                <span className="font-mono-brutal text-[10px] text-[#09090B]/70 uppercase block font-bold">UNLOCKED</span>
+                <span className="font-heading text-xl sm:text-2xl text-[#09090B]">4 / 10</span>
+              </div>
+              <div className="flex-1 sm:w-36 bg-[#09090B] text-[#D2E823] border-2 border-[#09090B] rounded-[12px] p-3 text-center shadow-[3px_3px_0px_0px_#09090B]">
+                <span className="font-mono-brutal text-[10px] text-zinc-400 uppercase block font-bold">TOTAL XP</span>
+                <span className="font-heading text-xl sm:text-2xl">250 XP</span>
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Quest Nodes Path */}
-        <section className="space-y-6">
-          <h2 className="text-xl font-bold text-zinc-200 flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-emerald-400" />
-            <span>Campaign Quests</span>
-          </h2>
-
-          <div className="grid grid-cols-1 gap-4">
-            {questNodes.map((quest, index) => {
-              const Icon = quest.icon;
-              return (
-                <motion.div
-                  key={quest.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`p-5 rounded-2xl border transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
-                    quest.status === 'completed'
-                      ? 'bg-zinc-900/80 border-emerald-500/40'
-                      : quest.status === 'active'
-                      ? 'bg-zinc-900/90 border-teal-400/80 shadow-lg shadow-teal-500/10'
-                      : 'bg-zinc-950/60 border-zinc-900 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`p-3.5 rounded-xl bg-gradient-to-tr ${quest.color} text-zinc-950 shadow-md`}
-                    >
-                      <Icon className="w-6 h-6" />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-base text-zinc-100">{quest.title}</h3>
-                        {quest.status === 'completed' && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-800/60">
-                            <CheckCircle2 className="w-3 h-3" /> Done
-                          </span>
-                        )}
-                        {quest.status === 'active' && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-300 bg-teal-950/80 px-2 py-0.5 rounded-full border border-teal-800/60">
-                            <Zap className="w-3 h-3 animate-pulse" /> Active Node
-                          </span>
-                        )}
-                        {quest.status === 'locked' && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-500 bg-zinc-900 px-2 py-0.5 rounded-full border border-zinc-800">
-                            <Lock className="w-3 h-3" /> Locked
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-zinc-400 mt-1">{quest.description}</p>
-                      <div className="mt-2 text-xs font-mono text-emerald-400 bg-zinc-950 px-2.5 py-1 rounded-md w-fit border border-zinc-900">
-                        {quest.command}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 self-end md:self-center">
-                    <span className="text-xs font-bold text-amber-400 bg-amber-950/40 border border-amber-800/40 px-3 py-1 rounded-lg">
-                      +{quest.xp} XP
-                    </span>
-                    <button
-                      disabled={quest.status === 'locked'}
-                      className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all ${
-                        quest.status === 'active'
-                          ? 'bg-gradient-to-r from-teal-400 to-cyan-400 text-zinc-950 hover:scale-105 shadow-md shadow-teal-500/20'
-                          : quest.status === 'completed'
-                          ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                          : 'bg-zinc-900 text-zinc-600 cursor-not-allowed'
-                      }`}
-                    >
-                      <span>{quest.status === 'completed' ? 'Replay' : quest.status === 'active' ? 'Launch Quest' : 'Locked'}</span>
-                      {quest.status !== 'locked' && <ArrowRight className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </motion.div>
-              );
-            })}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] p-4 shadow-[3px_3px_0px_0px_#09090B]">
+          <div className="flex flex-wrap items-center gap-4 text-xs font-mono-brutal font-bold text-[#09090B]">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-[#D2E823] border-2 border-[#09090B] rounded" />
+              <span>UNLOCKED NODE</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-[#F8F4E8] opacity-60 border-2 border-[#09090B] rounded" />
+              <span>LOCKED NODE</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-1 bg-[#09090B]" />
+              <span>90° BRANCH LINE</span>
+            </div>
           </div>
-        </section>
+          <span className="font-mono-brutal text-[11px] text-[#09090B]/60">
+            CLICK ANY NODE TO INSPECT OBJECTIVES
+          </span>
+        </div>
+
+        <div className="w-full bg-white border-2 border-[#09090B] rounded-[24px] shadow-[8px_8px_0px_0px_#09090B] p-6 sm:p-12 relative overflow-hidden">
+          <div className="absolute inset-0 bg-dot-grid-subtle pointer-events-none opacity-70" />
+
+          <div className="relative z-10 flex flex-col items-center max-w-5xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#09090B] text-[#D2E823] font-mono-brutal font-bold text-xs uppercase rounded-full border-2 border-[#09090B] mb-4 shadow-[2px_2px_0px_0px_#09090B]">
+              <GitBranch className="w-3.5 h-3.5" />
+              <span>TRUNK // branch: main</span>
+            </div>
+
+            {renderNodeCard('init')}
+
+            <div className="w-1 h-14 bg-[#09090B]" />
+
+            {renderNodeCard('commit')}
+
+            <div className="w-1 h-14 bg-[#09090B]" />
+
+            {renderNodeCard('logs')}
+
+            <div className="w-full relative my-2">
+              <div className="w-full flex justify-center">
+                <svg
+                  className="w-full max-w-3xl h-24 overflow-visible"
+                  viewBox="0 0 600 100"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <line x1="300" y1="0" x2="300" y2="100" stroke="#09090B" strokeWidth="4" />
+
+                  <path
+                    d="M 300 15 H 480 V 100"
+                    stroke="#09090B"
+                    strokeWidth="4"
+                    strokeLinejoin="miter"
+                  />
+
+                  <circle cx="300" cy="15" r="7" fill="#D2E823" stroke="#09090B" strokeWidth="3" />
+                  <circle cx="480" cy="100" r="6" fill="#09090B" />
+                </svg>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start w-full mt-2">
+                <div className="flex flex-col items-center">
+                  <div className="w-full flex justify-center">
+                    <span className="font-mono-brutal text-[11px] font-bold bg-white text-[#09090B] px-2 py-0.5 border border-[#09090B] rounded mb-3">
+                      main trunk
+                    </span>
+                  </div>
+
+                  {renderNodeCard('merge_ff')}
+                </div>
+
+                <div className="flex flex-col items-center">
+                  <div className="w-full flex justify-center">
+                    <span className="font-mono-brutal text-[11px] font-bold bg-[#D2E823] text-[#09090B] px-2 py-0.5 border border-[#09090B] rounded shadow-[2px_2px_0px_0px_#09090B] mb-3">
+                      ⚡ branch: feature/sandbox
+                    </span>
+                  </div>
+
+                  {renderNodeCard('branch_create')}
+
+                  <div className="w-1 h-12 bg-[#09090B]" />
+
+                  {renderNodeCard('feature_work')}
+                </div>
+              </div>
+
+              <div className="w-full flex justify-center mt-2">
+                <svg
+                  className="w-full max-w-3xl h-24 overflow-visible"
+                  viewBox="0 0 600 100"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <line x1="160" y1="0" x2="160" y2="100" stroke="#09090B" strokeWidth="4" />
+
+                  <path
+                    d="M 480 0 V 60 H 160 V 100"
+                    stroke="#09090B"
+                    strokeWidth="4"
+                    strokeLinejoin="miter"
+                  />
+
+                  <circle cx="160" cy="60" r="7" fill="#09090B" />
+                  <circle cx="160" cy="60" r="3" fill="#D2E823" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="w-1 h-12 bg-[#09090B]" />
+
+            <div className="w-full relative my-2">
+              <div className="w-full flex justify-center mb-2">
+                <span className="font-mono-brutal text-xs font-bold bg-red-100 text-red-900 border-2 border-[#09090B] px-3 py-1 rounded shadow-[2px_2px_0px_0px_#09090B]">
+                  ⚠ CRUCIBLE: DIVERGENCE &amp; MERGE CONFLICTS
+                </span>
+              </div>
+
+              <div className="w-full flex justify-center">
+                <svg
+                  className="w-full max-w-3xl h-24 overflow-visible"
+                  viewBox="0 0 600 100"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <line x1="300" y1="0" x2="300" y2="100" stroke="#09090B" strokeWidth="4" />
+                  <path
+                    d="M 300 20 H 120 V 100"
+                    stroke="#09090B"
+                    strokeWidth="4"
+                    strokeLinejoin="miter"
+                  />
+                  <circle cx="300" cy="20" r="6" fill="#09090B" />
+                </svg>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start w-full mt-2">
+                <div className="flex flex-col items-center">
+                  <span className="font-mono-brutal text-[11px] font-bold bg-[#09090B] text-white px-2 py-0.5 rounded mb-3">
+                    branch: hotfix/urgent-patch
+                  </span>
+                  {renderNodeCard('divergent')}
+                </div>
+
+                <div className="flex flex-col items-center">
+                  <span className="font-mono-brutal text-[11px] font-bold bg-white text-[#09090B] px-2 py-0.5 border border-[#09090B] rounded mb-3">
+                    main (conflicting changes)
+                  </span>
+                  {renderNodeCard('conflicts')}
+                </div>
+              </div>
+
+              <div className="w-full flex justify-center mt-2">
+                <svg
+                  className="w-full max-w-3xl h-24 overflow-visible"
+                  viewBox="0 0 600 100"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <line x1="440" y1="0" x2="440" y2="100" stroke="#09090B" strokeWidth="4" />
+                  <path
+                    d="M 160 0 V 55 H 440 V 100"
+                    stroke="#09090B"
+                    strokeWidth="4"
+                    strokeLinejoin="miter"
+                  />
+                  <circle cx="440" cy="55" r="7" fill="#09090B" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="w-1 h-12 bg-[#09090B]" />
+
+            {renderNodeCard('rebase')}
+
+            <div className="w-1 h-14 bg-[#09090B]" />
+
+            {renderNodeCard('remote_sync')}
+
+            <div className="mt-8 flex flex-col items-center gap-2">
+              <div className="w-12 h-12 rounded-[12px] bg-[#D2E823] border-2 border-[#09090B] shadow-[4px_4px_0px_0px_#09090B] flex items-center justify-center">
+                <Flame className="w-6 h-6 text-[#09090B]" />
+              </div>
+              <span className="font-heading text-sm text-[#09090B] uppercase tracking-wider">
+                MASTERY REACHED // GIT CHAMPION
+              </span>
+            </div>
+          </div>
+        </div>
       </main>
+
+      <QuestModal quest={selectedQuest} onClose={() => setSelectedQuest(null)} />
     </div>
   );
 }
