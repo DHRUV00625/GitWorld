@@ -167,17 +167,26 @@ export default function NeoBrutalistLandingPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F4E8] text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative">
+      {/* Viewport Noise Grain Overlay (3% opacity) */}
       <NoiseOverlay />
+
+      {/* Interactive Lerp Blend Cursor */}
       <CustomCursor />
+
+      {/* Sticky Neo-Brutalist Navigation */}
       <Navbar />
 
+      {/* Hero Section (12-Column Grid) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-8 pt-12 sm:pt-20 pb-20 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 items-center">
+          {/* Left Column (7 cols) */}
           <div className="lg:col-span-7 flex flex-col items-start text-left">
+            {/* Sticker Badge */}
             <div className="inline-block px-4 py-1.5 bg-[#D2E823] text-[#09090B] font-mono-brutal font-bold text-xs uppercase border-2 border-[#09090B] shadow-hard-sm rounded-full -rotate-2 mb-6 cursor-default hover:rotate-0 transition-transform">
               ⚡ INTERACTIVE SANDBOX
             </div>
 
+            {/* Massive Display Text with Glitch Hover */}
             <motion.h1
               whileHover={{
                 x: [0, -2, 2, -2, 2, 0],
@@ -189,10 +198,12 @@ export default function NeoBrutalistLandingPage() {
               MASTER VERSION CONTROL
             </motion.h1>
 
+            {/* Concise Description */}
             <p className="mt-8 text-base sm:text-xl font-medium text-[#09090B]/80 max-w-xl leading-relaxed">
               Ditch dry documentation. Explore realistic repository mechanics through high-octane visual sandboxes, interactive branches, and real-time command feedback.
             </p>
 
+            {/* Massive Hard-Shadow CTA Button */}
             <div className="mt-10">
               <button
                 onClick={handleCtaClick}
@@ -206,8 +217,11 @@ export default function NeoBrutalistLandingPage() {
             </div>
           </div>
 
+          {/* Right Column (5 cols) */}
           <div className="lg:col-span-5 relative mt-6 lg:mt-0 flex justify-center">
+            {/* Primary Image Card: Mockup of Brutalist Terminal Window */}
             <div className="w-full max-w-md bg-[#09090B] border-2 border-[#09090B] rounded-[32px] p-6 shadow-hard-lg relative overflow-hidden text-[#F8F4E8]">
+              {/* Terminal Header */}
               <div className="flex items-center justify-between border-b-2 border-zinc-800 pb-4 mb-5">
                 <div className="flex items-center gap-2">
                   <div className="w-3.5 h-3.5 rounded-full bg-[#D2E823] border border-black" />
@@ -220,6 +234,7 @@ export default function NeoBrutalistLandingPage() {
                 </span>
               </div>
 
+              {/* Terminal Body */}
               <div className="font-mono-brutal text-xs sm:text-sm space-y-3 text-zinc-300 pb-12">
                 <div className="flex items-center gap-2 text-zinc-400">
                   <span className="text-[#D2E823]">&gt;</span>
@@ -241,6 +256,7 @@ export default function NeoBrutalistLandingPage() {
               </div>
             </div>
 
+            {/* Overlapping Floating Asset Card (±10px y-axis float) */}
             <motion.div
               animate={{
                 y: [-10, 10, -10],
@@ -270,6 +286,7 @@ export default function NeoBrutalistLandingPage() {
         </div>
       </section>
 
+      {/* Philosophy Bento Grid Section */}
       <section id="philosophy" className="max-w-7xl mx-auto px-4 sm:px-8 py-20 w-full">
         <div className="flex items-center gap-3 mb-10">
           <span className="w-4 h-4 bg-[#D2E823] border-2 border-[#09090B] rotate-45" />
@@ -278,8 +295,11 @@ export default function NeoBrutalistLandingPage() {
           </h2>
         </div>
 
+        {/* Bento Grid (Varied Aspect Ratios) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Large 2x2 Card: VISUAL LEARNING (Spans 2 columns on desktop) */}
           <div className="md:col-span-2 bg-[#09090B] text-[#F8F4E8] border-2 border-[#09090B] rounded-[24px] p-8 sm:p-10 shadow-hard-lg relative overflow-hidden card-brutal-press flex flex-col justify-between min-h-[380px]">
+            {/* Subtle Overlay Pattern at 40% opacity */}
             <div className="absolute inset-0 bg-grid-overlay opacity-40 mix-blend-overlay pointer-events-none" />
 
             <div className="relative z-10 flex items-start justify-between">
@@ -300,6 +320,7 @@ export default function NeoBrutalistLandingPage() {
               </p>
             </div>
 
+            {/* Interactive graphical DAG mockup inside card */}
             <div className="relative z-10 pt-8 mt-6 border-t border-zinc-800 flex items-center gap-4 text-xs font-mono-brutal text-zinc-400">
               <span className="text-[#D2E823]">STATUS: ACTIVE DAG</span>
               <span>•</span>
@@ -307,7 +328,9 @@ export default function NeoBrutalistLandingPage() {
             </div>
           </div>
 
+          {/* Right Column with two 1x1 Small Cards */}
           <div className="flex flex-col gap-6">
+            {/* Small 1x1 Card: INTERACTIVE SANDBOX */}
             <div className="bg-[#F8F4E8] border-2 border-[#09090B] rounded-[24px] p-7 shadow-hard-lg relative overflow-hidden bg-dot-grid card-brutal-press flex-1 flex flex-col justify-between min-h-[200px]">
               <div className="flex items-center justify-between">
                 <span className="font-mono-brutal text-[11px] font-bold text-[#09090B] bg-white px-2 py-0.5 rounded border border-[#09090B]">
@@ -328,6 +351,7 @@ export default function NeoBrutalistLandingPage() {
               </div>
             </div>
 
+            {/* Small 1x1 Card: STATE PERSISTENCE */}
             <div className="bg-[#F8F4E8] border-2 border-[#09090B] rounded-[24px] p-7 shadow-hard-lg relative overflow-hidden bg-dot-grid card-brutal-press flex-1 flex flex-col justify-between min-h-[200px]">
               <div className="flex items-center justify-between">
                 <span className="font-mono-brutal text-[11px] font-bold text-[#09090B] bg-white px-2 py-0.5 rounded border border-[#09090B]">
@@ -351,7 +375,9 @@ export default function NeoBrutalistLandingPage() {
         </div>
       </section>
 
+      {/* Horizontal Scrolling Topics Section (Curriculum) */}
       <section id="curriculum" className="max-w-7xl mx-auto px-4 sm:px-8 py-20 w-full">
+        {/* Header with Navigation Arrows */}
         <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-[#09090B]">
           <div className="flex items-center gap-3">
             <span className="w-4 h-4 bg-[#09090B] border-2 border-[#09090B]" />
@@ -378,6 +404,7 @@ export default function NeoBrutalistLandingPage() {
           </div>
         </div>
 
+        {/* Horizontal Scrolling Cards Flex Container */}
         <div
           ref={curriculumScrollRef}
           className="flex gap-6 overflow-x-auto no-scrollbar pb-6 pt-2 select-none"
@@ -392,8 +419,10 @@ export default function NeoBrutalistLandingPage() {
                   : 'cursor-pointer card-brutal-press hover:bg-[#F8F4E8]'
               }`}
             >
+              {/* Graphic Mockup Area */}
               <div className="mb-6">{item.graphic}</div>
 
+              {/* Text Info */}
               <div className="text-left space-y-2">
                 <div className="flex items-center justify-between">
                   <span className={`px-2.5 py-0.5 rounded-full font-mono-brutal font-bold text-[10px] border border-[#09090B] ${item.badgeColor}`}>
@@ -411,6 +440,7 @@ export default function NeoBrutalistLandingPage() {
                 </p>
               </div>
 
+              {/* Action Button */}
               <div className="mt-6 pt-4 border-t-2 border-[#09090B]/10 flex items-center justify-between">
                 <span className="font-heading text-xs tracking-tight text-[#09090B]">
                   {item.locked ? 'LOCKED MODULE' : 'START MODULE'}
@@ -428,9 +458,11 @@ export default function NeoBrutalistLandingPage() {
         </div>
       </section>
 
+      {/* Footer Section */}
       <footer className="w-full bg-[#09090B] text-[#F8F4E8] border-t-2 border-[#09090B] pt-16 pb-12 px-4 sm:px-8 mt-auto">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-10 pb-12 border-b-2 border-zinc-800">
+            {/* Brand and Newsletter (5 cols) */}
             <div className="md:col-span-5 space-y-6">
               <div className="flex items-center gap-2">
                 <span className="font-heading text-3xl text-white tracking-tighter">GITWORLD</span>
@@ -441,6 +473,7 @@ export default function NeoBrutalistLandingPage() {
                 The unapologetic Neo-Brutalist interactive platform designed to teach version control through hands-on visual sandboxes.
               </p>
 
+              {/* Newsletter / Updates Signup Form */}
               <div className="pt-2">
                 <label className="block font-mono-brutal text-[11px] text-[#D2E823] mb-2 font-bold tracking-wider">
                   GET REPO DROPS &amp; QUEST ALERTS
@@ -468,7 +501,9 @@ export default function NeoBrutalistLandingPage() {
               </div>
             </div>
 
+            {/* 3 Columns: Platform, Topics, Social (7 cols total) */}
             <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8 text-xs font-medium">
+              {/* Column 1: Platform */}
               <div className="space-y-4">
                 <span className="font-mono-brutal text-[11px] font-bold text-[#D2E823] uppercase tracking-wider block">
                   // PLATFORM
@@ -483,7 +518,7 @@ export default function NeoBrutalistLandingPage() {
                   <li>
                     <a href="/journey" className="hover:text-[#D2E823] transition-colors flex items-center gap-1">
                       <span>Journey Map</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      <ArrowUpRight className="w-3 h-3" />
                     </a>
                   </li>
                   <li>
@@ -494,6 +529,7 @@ export default function NeoBrutalistLandingPage() {
                 </ul>
               </div>
 
+              {/* Column 2: Topics */}
               <div className="space-y-4">
                 <span className="font-mono-brutal text-[11px] font-bold text-[#D2E823] uppercase tracking-wider block">
                   // TOPICS
@@ -514,6 +550,7 @@ export default function NeoBrutalistLandingPage() {
                 </ul>
               </div>
 
+              {/* Column 3: Social */}
               <div className="space-y-4 col-span-2 sm:col-span-1">
                 <span className="font-mono-brutal text-[11px] font-bold text-[#D2E823] uppercase tracking-wider block">
                   // SOCIAL &amp; SOURCE
@@ -527,7 +564,7 @@ export default function NeoBrutalistLandingPage() {
                       className="hover:text-[#D2E823] transition-colors flex items-center gap-1"
                     >
                       <span>GitHub</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      <ArrowUpRight className="w-3 h-3" />
                     </a>
                   </li>
                   <li>
@@ -548,6 +585,7 @@ export default function NeoBrutalistLandingPage() {
             </div>
           </div>
 
+          {/* Copyright & Meta */}
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-[11px] font-mono-brutal text-zinc-500 gap-3">
             <p>© 2026 GITWORLD // ALL RIGHTS RESERVED.</p>
             <p className="text-[#D2E823]/80">NEO-BRUTALIST ACID EDITION // V2.0</p>
@@ -555,6 +593,7 @@ export default function NeoBrutalistLandingPage() {
         </div>
       </footer>
 
+      {/* Auth Modal */}
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}

@@ -23,6 +23,7 @@ export default function JourneyHeader({ userEmail, xp = 250, level = 2 }: Journe
   return (
     <header className="sticky top-4 z-40 px-4 sm:px-8 max-w-7xl mx-auto w-full">
       <div className="w-full h-16 sm:h-20 bg-[#F8F4E8]/90 backdrop-blur-[24px] border-2 border-[#09090B] rounded-[12px] px-4 sm:px-8 flex items-center justify-between shadow-[4px_4px_0px_0px_#09090B]">
+        {/* Left: Back Link & Title */}
         <div className="flex items-center gap-3 sm:gap-4">
           <Link
             href="/"
@@ -43,6 +44,7 @@ export default function JourneyHeader({ userEmail, xp = 250, level = 2 }: Journe
           </div>
         </div>
 
+        {/* Right: XP Stats & Sign Out */}
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="hidden md:flex items-center gap-2 bg-white border-2 border-[#09090B] rounded-[8px] px-3 py-1.5 shadow-[2px_2px_0px_0px_#09090B]">
             <Trophy className="w-3.5 h-3.5 text-[#09090B]" />

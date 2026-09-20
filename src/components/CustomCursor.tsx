@@ -10,11 +10,13 @@ export default function CustomCursor() {
   const mouseX = useMotionValue(-100);
   const mouseY = useMotionValue(-100);
 
+  // 0.2 lerp equivalent spring damping and stiffness
   const springConfig = { damping: 25, stiffness: 220, mass: 0.5 };
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
 
   useEffect(() => {
+    // Only enable on fine pointer devices (desktop)
     if (window.matchMedia('(pointer: coarse)').matches) {
       return;
     }

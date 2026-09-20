@@ -31,6 +31,7 @@
   }
 }
 
+/* Hard Neo-Brutalist Shadows (strictly 0 blur) */
 .shadow-hard-sm {
   box-shadow: 2px 2px 0px 0px #09090B;
 }
@@ -51,10 +52,12 @@
   box-shadow: 8px 8px 0px 0px #D2E823;
 }
 
+/* Border utilities */
 .border-brutal {
   border: 2px solid #09090B;
 }
 
+/* Neo-Brutalist Interactive Button Translations */
 .btn-brutal-press {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -73,6 +76,7 @@
   box-shadow: 0px 0px 0px 0px #09090B;
 }
 
+/* Dot grid background (1px dots every 20px) */
 .bg-dot-grid {
   background-image: radial-gradient(#09090B 1.2px, transparent 1.2px);
   background-size: 20px 20px;
@@ -83,6 +87,7 @@
   background-size: 20px 20px;
 }
 
+/* Subtle crosshatch grid overlay */
 .bg-grid-overlay {
   background-image: 
     linear-gradient(to right, rgba(248, 244, 232, 0.08) 1px, transparent 1px),
@@ -90,6 +95,7 @@
   background-size: 24px 24px;
 }
 
+/* Custom Scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

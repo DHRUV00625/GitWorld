@@ -18,6 +18,7 @@ export default function Navbar() {
     <>
       <header className="sticky top-4 z-40 px-4 sm:px-8 max-w-7xl mx-auto w-full">
         <div className="w-full h-16 sm:h-20 bg-[#F8F4E8]/90 backdrop-blur-[24px] border-2 border-[#09090B] rounded-[12px] px-6 sm:px-8 flex items-center justify-between shadow-[4px_4px_0px_0px_#09090B]">
+          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <span className="font-heading text-xl sm:text-2xl text-[#09090B] tracking-tighter">
               GITWORLD
@@ -25,6 +26,7 @@ export default function Navbar() {
             <div className="w-3 h-3 bg-[#D2E823] border border-[#09090B] rotate-45 group-hover:rotate-90 transition-transform duration-200" />
           </Link>
 
+          {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-8 font-body font-bold text-xs uppercase tracking-wider text-[#09090B]">
             <Link href="#philosophy" className="hover:text-[#D2E823] hover:bg-[#09090B] px-2 py-1 rounded transition-colors">
               Philosophy
@@ -38,6 +40,7 @@ export default function Navbar() {
             </Link>
           </nav>
 
+          {/* Right Hard-Shadow Button for Login */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => openAuth('login')}
@@ -49,6 +52,7 @@ export default function Navbar() {
         </div>
       </header>
 
+      {/* Auth Modal */}
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}

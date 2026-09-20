@@ -72,6 +72,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -80,6 +81,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
             className="fixed inset-0 bg-[#09090B]/70 backdrop-blur-sm"
           />
 
+          {/* Modal Container */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -87,6 +89,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
             className="relative w-full max-w-md bg-[#F8F4E8] border-2 border-[#09090B] rounded-[24px] shadow-[8px_8px_0px_0px_#09090B] p-6 sm:p-8 overflow-hidden z-10 font-body"
           >
+            {/* Close Button */}
             <button
               onClick={onClose}
               className="absolute top-5 right-5 p-2 text-[#09090B] bg-[#F8F4E8] hover:bg-[#D2E823] border-2 border-[#09090B] rounded-[8px] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer"
@@ -94,6 +97,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
               <X className="w-4 h-4" />
             </button>
 
+            {/* Header */}
             <div className="text-left mb-6">
               <span className="inline-block px-3 py-1 bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-full text-[11px] font-mono-brutal font-bold tracking-wider mb-3 shadow-[2px_2px_0px_0px_#09090B]">
                 AUTHENTICATION
@@ -108,6 +112,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
               </p>
             </div>
 
+            {/* Mode Toggle Switch */}
             <div className="grid grid-cols-2 p-1 bg-white border-2 border-[#09090B] rounded-[12px] mb-6 shadow-[2px_2px_0px_0px_#09090B]">
               <button
                 type="button"
@@ -141,6 +146,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
               </button>
             </div>
 
+            {/* Error Message */}
             {errorMsg && (
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
@@ -151,6 +157,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
               </motion.div>
             )}
 
+            {/* Success Message */}
             {successMsg && (
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
@@ -161,6 +168,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
               </motion.div>
             )}
 
+            {/* Form */}
             <form onSubmit={handleAuth} className="space-y-4">
               <div>
                 <label className="block text-xs font-heading text-[#09090B] mb-1 tracking-tight">

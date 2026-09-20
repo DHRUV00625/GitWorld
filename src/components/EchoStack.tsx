@@ -14,6 +14,7 @@ export default function EchoStack() {
 
   return (
     <div className="relative inline-block select-none py-6">
+      {/* Background Echo Layers 2 to 5 (shifted up and left) */}
       {layers.map((layer, index) => (
         <div
           key={index}
@@ -29,6 +30,7 @@ export default function EchoStack() {
         </div>
       ))}
 
+      {/* Top Main Layer (Foreground) */}
       <h1 className="relative z-10 font-clash font-extrabold uppercase tracking-[-0.05em] leading-[0.85] text-[11vw] lg:text-[170px] text-[#111111]">
         {text}
       </h1>
