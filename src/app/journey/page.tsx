@@ -317,9 +317,7 @@ export default function JourneyTimelinePage() {
       description: cfg.description,
       commands: cfg.commands,
       xp: cfg.xp,
-      isUnlocked: unlocked,
-      isCompleted: completed,
-      requires: cfg.requires,
+      status: completed ? 'completed' : unlocked ? 'active' : 'locked',
       badge: cfg.badge,
     };
   };
@@ -562,7 +560,7 @@ export default function JourneyTimelinePage() {
         quest={selectedQuest}
         isOpen={!!selectedQuest}
         onClose={() => setSelectedQuest(null)}
-        onLaunchTopic={(id) => {
+        onLaunchTopic={(id: string) => {
           setSelectedQuest(null);
           router.push(`/topic/${id}`);
         }}
@@ -612,7 +610,7 @@ function TimelineNodeItem({
   const shakeAnimation = isShaking
     ? {
         x: [-6, 6, -6, 6, -3, 3, 0],
-        transition: { duration: 0.25, ease: 'linear' },
+        transition: { duration: 0.25, ease: 'linear' as const },
       }
     : { x: 0 };
 

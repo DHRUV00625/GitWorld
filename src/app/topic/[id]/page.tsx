@@ -722,9 +722,9 @@ export default function TopicPage() {
                 {topic.id === 'branching' && showAnimation && (
                   <div className="py-4">
                     <BranchingVisualizer
-                      mainBranch="main"
-                      featureBranch={currentBranch !== 'main' ? currentBranch : 'feature/quantum-leap'}
-                      isDiverged={true}
+                      isBranchCreated={true}
+                      currentBranch={currentBranch !== 'main' ? currentBranch : 'feature/quantum-leap'}
+                      mainBranchName="main"
                     />
                   </div>
                 )}
