@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Dela_Gothic_One, Space_Grotesk } from 'next/font/google';
 import './globals.css';
+import ReactiveBackground from '@/components/ReactiveBackground';
 
 const delaGothic = Dela_Gothic_One({
   weight: '400',
@@ -30,7 +31,10 @@ export default function RootLayout({
       lang="en"
       className={`${delaGothic.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-body">{children}</body>
+      <body className="min-h-full flex flex-col font-body bg-[#F8F4E8] relative">
+        <ReactiveBackground />
+        {children}
+      </body>
     </html>
   );
 }
