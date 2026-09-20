@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Dela_Gothic_One, Space_Grotesk } from 'next/font/google';
 import './globals.css';
-import ReactiveBackground from '@/components/ReactiveBackground';
+import DotField from '@/components/DotField';
 
 const delaGothic = Dela_Gothic_One({
   weight: '400',
@@ -32,7 +32,17 @@ export default function RootLayout({
       className={`${delaGothic.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-body bg-[#F8F4E8] relative">
-        <ReactiveBackground />
+        <div className="fixed inset-0 z-[-1] pointer-events-none">
+          <DotField
+            gradientFrom="rgba(9, 9, 11, 0.5)"
+            gradientTo="rgba(9, 9, 11, 0.15)"
+            glowColor="#D2E823"
+            dotSpacing={24}
+            dotRadius={1.5}
+            sparkle={false}
+            waveAmplitude={0}
+          />
+        </div>
         {children}
       </body>
     </html>
