@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import JourneyHeader from '@/components/JourneyHeader';
 import QuestModal, { QuestNodeData } from '@/components/QuestModal';
 import NoiseOverlay from '@/components/NoiseOverlay';
@@ -105,6 +107,7 @@ const TOPICS_CONFIG: Record<string, TopicNodeConfig> = {
 const ORDERED_TOPIC_IDS = ['init', 'commit', 'branching', 'merging', 'conflicts'];
 
 export default function JourneyTimelinePage() {
+  const router = useRouter();
   const [selectedQuest, setSelectedQuest] = useState<QuestNodeData | null>(null);
   const [user, setUser] = useState<any>(null);
   const [completedTopics, setCompletedTopics] = useState<string[]>(['init']);
@@ -536,7 +539,7 @@ export default function JourneyTimelinePage() {
                       if (!unlocked) {
                         handleLockedClick(node.id, node.requires);
                       } else {
-                        setSelectedQuest(getQuestData(node.id));
+                        router.push(`/topic/${node.id}`);
                       }
                     }}
                     className={`relative p-6 sm:p-7 rounded-[12px] border-2 border-[#09090B] transition-all duration-150 cursor-pointer select-none ${
@@ -618,24 +621,38 @@ export default function JourneyTimelinePage() {
                         REWARD: +{node.xp} XP
                       </span>
 
-                      {/* Hard-Shadow Button: MARK AS DONE (translates [2px, 2px] & loses shadow on click) */}
-                      {unlocked && !completed && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleMarkAsDone(e, node.id)}
-                          disabled={isUpdatingDb}
-                          className="px-4 py-2 bg-[#09090B] text-[#D2E823] font-heading text-xs tracking-tight rounded-[6px] border-2 border-[#09090B] shadow-[4px_4px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#09090B] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all cursor-pointer flex items-center gap-1.5"
-                          title="Complete this milestone and unlock subsequent timeline stage"
-                        >
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                          <span>MARK AS DONE</span>
-                        </button>
-                      )}
+                      {/* Action buttons */}
+                      {unlocked && (
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/topic/${node.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-3 py-1.5 bg-white text-[#09090B] hover:bg-[#09090B] hover:text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[6px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1 cursor-pointer"
+                            title="Enter theory and interactive terminal sandbox"
+                          >
+                            <span>SANDBOX</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
 
-                      {completed && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border-2 border-[#09090B] rounded-[6px] shadow-[2px_2px_0px_0px_#09090B] font-mono-brutal text-[11px] font-bold text-[#09090B]">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>COMPLETED</span>
+                          {!completed && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleMarkAsDone(e, node.id)}
+                              disabled={isUpdatingDb}
+                              className="px-3 py-1.5 bg-[#09090B] text-[#D2E823] font-heading text-xs tracking-tight rounded-[6px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer flex items-center gap-1"
+                              title="Complete this milestone and unlock subsequent timeline stage"
+                            >
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              <span>DONE</span>
+                            </button>
+                          )}
+
+                          {completed && (
+                            <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#D2E823] border border-[#09090B] rounded-[6px] font-mono-brutal text-[10px] font-bold text-[#09090B]">
+                              <Sparkles className="w-3 h-3" />
+                              <span>DONE</span>
+                            </div>
+                          )}
                         </div>
                       )}
 
