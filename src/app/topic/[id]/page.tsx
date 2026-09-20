@@ -25,7 +25,17 @@ import {
   CornerDownLeft,
   RotateCcw,
   AlertTriangle,
+  ChevronRight,
+  ChevronLeft,
+  Check,
 } from 'lucide-react';
+
+interface TheoryBento {
+  whatItIs: string;
+  whyWeNeedIt: string;
+  howItWorks: string;
+  howItHelps: string;
+}
 
 interface TopicMeta {
   id: string;
@@ -35,12 +45,7 @@ interface TopicMeta {
   xp: number;
   expectedPattern: RegExp;
   hint: string;
-  theory: {
-    whatItIs: string;
-    whyWeNeedIt: string;
-    howItWorks: string;
-    theSolution: string;
-  };
+  theory: TheoryBento;
   nextTopicId: string | null;
   nextTopicTitle: string;
 }
@@ -48,7 +53,7 @@ interface TopicMeta {
 const TOPIC_REGISTRY: Record<string, TopicMeta> = {
   init: {
     id: 'init',
-    stageNum: 'STAGE 01',
+    stageNum: '01',
     stageName: 'INIT',
     title: 'THE GENESIS REPOSITORY',
     xp: 100,
@@ -56,20 +61,20 @@ const TOPIC_REGISTRY: Record<string, TopicMeta> = {
     hint: 'git init gitworld-project',
     theory: {
       whatItIs:
-        'The `git init` command creates a brand new Git repository or reinitializes an existing one. It constructs the hidden `.git` folder that houses all objects, configuration, and pointer heads.',
+        'The `git init` command initializes a brand-new Git repository or converts an existing unversioned workspace into a fully tracked local repository.',
       whyWeNeedIt:
-        'Without repository initialization, directory files are unversioned snapshots. Git cannot track changes, compute cryptographic diffs, or isolate timeline commits.',
+        'Without repository initialization, project files are unmonitored text. Git cannot track modifications, record commit graphs, or maintain cryptographic diff integrity.',
       howItWorks:
-        'Git allocates a local database inside `.git/` with subdirectories `objects/`, `refs/`, `HEAD`, and `config`. It sets the initial default branch to `main`.',
-      theSolution:
-        'Initialize the workspace by executing `git init <repo-name>` to create your versioned project universe.',
+        'Git creates a hidden `.git` directory containing the internal object database (`objects/`), reference heads (`refs/heads/`), index staging file, and `HEAD` pointer.',
+      howItHelps:
+        'Establishes the immutable foundation for local version control, allowing you to branch, commit, and travel back to any historical state in seconds.',
     },
     nextTopicId: 'commit',
     nextTopicTitle: '02. COMMIT',
   },
   commit: {
     id: 'commit',
-    stageNum: 'STAGE 02',
+    stageNum: '02',
     stageName: 'COMMIT',
     title: 'IMMUTABLE SNAPSHOTS',
     xp: 150,
@@ -77,356 +82,369 @@ const TOPIC_REGISTRY: Record<string, TopicMeta> = {
     hint: 'git commit -m "feat: initial commit"',
     theory: {
       whatItIs:
-        'A commit is an immutable cryptographic snapshot of staged changes. It captures the exact state of files, authorship metadata, timestamp, and a parent commit hash pointer.',
+        'A commit is an immutable cryptographic snapshot of staged workspace changes, capturing exact file tree states, author metadata, and a parent commit hash.',
       whyWeNeedIt:
-        'Commits generate a verifiable audit trail. Unlike saving over files in place, every commit forms a permanent checkpoint in a Directed Acyclic Graph (DAG) that can be inspected forever.',
+        'Directly saving over files destroys change history and context. Commits create a verifiable, auditable Directed Acyclic Graph (DAG) of the project.',
       howItWorks:
-        'Git takes tree snapshots from the Staging Index (Index file), serializes blobs, computes the SHA-1 tree object, and writes a commit object pointing to its parent SHA.',
-      theSolution:
-        'Stage files via `git add .` and seal them into the history ledger with `git commit -m "message"`.',
+        'Git packages staged index items into compressed SHA-1/SHA-256 blob objects, links them via tree objects, and seals them into a timestamped commit object.',
+      howItHelps:
+        'Provides airtight rollbacks, pinpoint diffs, regression bisecting, and permanent lineage protection for your entire codebase.',
     },
     nextTopicId: 'branching',
     nextTopicTitle: '03. BRANCHING',
   },
   branching: {
     id: 'branching',
-    stageNum: 'STAGE 03',
+    stageNum: '03',
     stageName: 'BRANCHING',
     title: 'PARALLEL UNIVERSES',
     xp: 200,
     expectedPattern: /^git\s+(?:checkout\s+-b|switch\s+-c|branch)(?:\s+([a-zA-Z0-9_\-\.\/]+))?$/,
-    hint: 'git checkout -b feature/quantum-leap',
+    hint: 'git branch feature/quantum-leap',
     theory: {
       whatItIs:
-        'A Git branch is a lightweight movable pointer to a specific commit. Spawning a new branch diverges your commit trajectory without altering existing stable code.',
+        'A Git branch is an independent, lightweight movable pointer referencing a specific commit. Creating branches diverges your work without affecting trunk.',
       whyWeNeedIt:
-        'Branching empowers isolated feature development, experimental prototyping, and bug repairs without polluting or endangering the primary production line (`main`).',
+        'Coding new experimental features or repairs directly on `main` threatens production stability. Branches isolate active development completely.',
       howItWorks:
-        'Git creates a 41-byte text reference inside `.git/refs/heads/<branch>` containing the latest commit hash, then updates `.git/HEAD` to point to the new ref.',
-      theSolution:
-        'Create and switch onto an isolated track using `git checkout -b feature/<name>` or `git switch -c feature/<name>`.',
+        'Git writes a 41-byte pointer in `.git/refs/heads/<branch-name>` pointing to current HEAD, then switches the active reference pointer to this new branch.',
+      howItHelps:
+        'Empowers parallel feature engineering, isolated bugfixing, painless context switching, and safe experimentation with zero trunk pollution.',
     },
     nextTopicId: 'merging',
     nextTopicTitle: '04. MERGING',
   },
   merging: {
     id: 'merging',
-    stageNum: 'STAGE 04',
+    stageNum: '04',
     stageName: 'MERGING',
-    title: 'TIMELINE SYNTHESIS',
+    title: 'TIMELINE CONVERGENCE',
     xp: 250,
     expectedPattern: /^git\s+merge(?:\s+([a-zA-Z0-9_\-\.\/]+))?$/,
     hint: 'git merge feature/quantum-leap',
     theory: {
       whatItIs:
-        'Merging combines divergent lines of development. It reconciles independent histories from one branch and integrates them cleanly into your current target branch.',
+        'Merging combines divergence histories from two separate branch pointers back into a unified branch, reconciling parallel development efforts.',
       whyWeNeedIt:
-        'Once experimental feature work is vetted and tested, its changes must be integrated back into the main trunk so downstream teammates can benefit from the work.',
+        'Isolated feature work must eventually be integrated into the primary deployment trunk without losing authorship or individual commit histories.',
       howItWorks:
-        'If the target branch has not diverged, Git executes a Fast-Forward merge by simply moving the pointer forward. If both diverged, Git constructs a 3-way merge commit with two parents.',
-      theSolution:
-        'Switch to your base trunk (`git checkout main`) and execute `git merge <featureBranch>` to synthesize your branch histories.',
+        'Git performs either a Fast-Forward pointer advance or a 3-way merge algorithm finding the common ancestor commit, creating a 2-parent merge commit.',
+      howItHelps:
+        'Automates conflict identification, locks in reviewed team features, and unifies fragmented code streams cleanly.',
     },
-    nextTopicId: 'conflicts',
-    nextTopicTitle: '05. CONFLICTS',
+    nextTopicId: 'remote',
+    nextTopicTitle: '05. REMOTE',
   },
-  conflicts: {
-    id: 'conflicts',
-    stageNum: 'STAGE 05',
-    stageName: 'CONFLICTS',
-    title: 'THE CRUCIBLE OF DIFFS',
-    xp: 350,
-    expectedPattern: /^git\s+(?:merge|commit|add).*$/,
-    hint: 'git commit -m "fix: resolve crucible conflict"',
+  remote: {
+    id: 'remote',
+    stageNum: '05',
+    stageName: 'REMOTE',
+    title: 'INTERSTELLAR SYNC',
+    xp: 300,
+    expectedPattern: /^git\s+push(?:\s+.*)?$/,
+    hint: 'git push origin main',
     theory: {
       whatItIs:
-        'A merge conflict occurs when concurrent commits modify the same lines of a file in incompatible ways. Git pauses synthesis and inserts visual collision markers.',
+        'Remote operations link your offline repository with distributed cloud hosting peers like GitHub, GitLab, or internal enterprise servers.',
       whyWeNeedIt:
-        'Git refuses to blindly guess which developer’s code is correct. The crucible ensures human engineers deliberately verify and decide what code survives.',
+        'Local machines are single points of failure. Distributed development requires decentralized synchronization and multi-engineer collaboration.',
       howItWorks:
-        'Git annotates the conflicted file with `<<<<<<< HEAD` (current branch changes), `=======` (boundary divider), and `>>>>>>>` (incoming branch changes).',
-      theSolution:
-        'Inspect the conflicting lines, remove the collision markers, choose the correct composite logic, and seal the resolution with `git commit`.',
+        'Git negotiates SHA object packs over SSH or HTTPS, uploads delta blobs, and securely synchronizes remote tracking references (`origin/main`).',
+      howItHelps:
+        'Facilitates peer code review, off-site disaster backups, automated CI/CD deployment pipelines, and global developer synchronization.',
     },
     nextTopicId: null,
-    nextTopicTitle: 'JOURNEY COMPLETED',
+    nextTopicTitle: '',
   },
 };
 
-// Levenshtein Distance for typo identification
-function levenshteinDistance(a: string, b: string): number {
-  const m = a.length;
-  const n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+// Levenshtein distance for smart typo detection
+function getLevenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
 
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (a[i - 1] === b[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1];
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
       } else {
-        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
       }
     }
   }
-  return dp[m][n];
+  return matrix[b.length][a.length];
 }
 
+// Smart Failsafe Error Handler
 interface ValidationResult {
   isValid: boolean;
   errorMessage?: string;
   capturedArg?: string;
 }
 
-// Smart Failsafe Validation Function
 function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
   const trimmed = input.trim();
   if (!trimmed) {
-    return {
-      isValid: false,
-      errorMessage: '> SYNTAX FAULT: Empty command received. Type a valid Git expression.',
-    };
+    return { isValid: false, errorMessage: 'Empty command entered. Please enter a valid Git command.' };
   }
 
-  // 1. Direct Regex Match check
-  const match = trimmed.match(topic.expectedPattern);
-  if (match) {
-    return {
-      isValid: true,
-      capturedArg: match[1] || undefined,
-    };
-  }
+  const tokens = trimmed.split(/\s+/);
+  const hintTokens = topic.hint.split(/\s+/);
 
-  // 2. Tokenize by whitespace for word-by-word comparison
-  const tokens = trimmed.split(/\s+/).filter(Boolean);
-
-  // Check first token (must be 'git')
-  const firstWord = tokens[0].toLowerCase();
-  if (firstWord !== 'git') {
-    if (levenshteinDistance(firstWord, 'git') <= 2) {
+  // Check 1: Root command must be 'git'
+  if (tokens[0].toLowerCase() !== 'git') {
+    const dist = getLevenshteinDistance(tokens[0].toLowerCase(), 'git');
+    if (dist <= 2) {
       return {
         isValid: false,
-        errorMessage: `> SYNTAX FAULT: You typed '${tokens[0]}'. Did you mean 'git'? Try again.`,
+        errorMessage: `Typo detected in command root: '${tokens[0]}' is misspelled. Did you mean 'git'?`,
       };
     }
     return {
       isValid: false,
-      errorMessage: `> SYNTAX FAULT: All Git commands must start with 'git'. You typed '${tokens[0]}'. Did you mean 'git ${topic.hint.replace(/^git\s*/, '')}'?`,
+      errorMessage: `Invalid binary '${tokens[0]}'. All Git commands must start with 'git'. Expected '${topic.hint}'.`,
     };
   }
 
-  // Only typed 'git'
-  if (tokens.length === 1) {
+  // Check 2: Subcommand check based on topic
+  if (tokens.length < 2) {
     return {
       isValid: false,
-      errorMessage: `> SYNTAX FAULT: Missing sub-command after 'git'. Try typing '${topic.hint}'.`,
+      errorMessage: `Missing Git subcommand. Expected: '${topic.hint}'.`,
     };
   }
 
-  const secondWord = tokens[1].toLowerCase();
+  const subCmd = tokens[1].toLowerCase();
 
-  // 3. Stage-specific syntactic analysis
-  if (topic.id === 'branching') {
-    const validBranchingWords = ['branch', 'checkout', 'switch'];
-
-    // Word-by-word typo check on branching sub-command
-    for (const validWord of validBranchingWords) {
-      const dist = levenshteinDistance(secondWord, validWord);
-      if (dist > 0 && dist <= 2) {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git ${validWord}'? Try again.`,
-        };
-      }
-    }
-
-    // Check if user typed other valid git sub-commands that don't apply to branching
-    if (['init', 'commit', 'merge', 'push', 'pull', 'status', 'add'].includes(secondWord)) {
-      return {
-        isValid: false,
-        errorMessage: `> SYNTAX FAULT: Sub-command '${tokens[1]}' belongs to another stage. For branching, use 'git checkout -b <branch>' or 'git branch <branch>'.`,
-      };
-    }
-
-    // Checkout flags check
-    if (secondWord === 'checkout') {
-      if (tokens.length === 2) {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: Missing '-b' flag and branch name. To create and switch to a new branch, use 'git checkout -b <branch-name>'.`,
-        };
-      }
-      if (tokens[2] !== '-b') {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: Missing '-b' flag. You typed 'git checkout ${tokens[2]}'. To create and switch to a new branch simultaneously, use 'git checkout -b ${tokens[2]}'.`,
-        };
-      }
-      if (tokens.length === 3) {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: Missing branch name operand after '-b'. Specify a branch, e.g., 'git checkout -b feature/quantum-leap'.`,
-        };
-      }
-    }
-
-    // Switch flags check
-    if (secondWord === 'switch') {
-      if (tokens.length === 2) {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: Missing '-c' flag and branch name. To create and switch to a new branch, use 'git switch -c <branch-name>'.`,
-        };
-      }
-      if (tokens[2] !== '-c') {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: Missing '-c' flag. You typed 'git switch ${tokens[2]}'. Use 'git switch -c ${tokens[2]}'.`,
-        };
-      }
-      if (tokens.length === 3) {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: Missing branch name operand after '-c'. Specify a branch, e.g., 'git switch -c feature/quantum-leap'.`,
-        };
-      }
-    }
-
-    // Branch flags/args check
-    if (secondWord === 'branch') {
-      if (tokens.length === 2) {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: Missing branch name operand. Specify a branch name, e.g., 'git branch feature/quantum-leap'.`,
-        };
-      }
-    }
-  } else if (topic.id === 'init') {
-    const dist = levenshteinDistance(secondWord, 'init');
-    if (dist > 0 && dist <= 2) {
-      return {
-        isValid: false,
-        errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git init'? Try again.`,
-      };
-    }
-    if (secondWord !== 'init') {
-      return {
-        isValid: false,
-        errorMessage: `> SYNTAX FAULT: Expected 'git init [repo-name]'. You typed 'git ${tokens[1]}'. Did you mean '${topic.hint}'?`,
-      };
-    }
-  } else if (topic.id === 'commit') {
-    const dist = levenshteinDistance(secondWord, 'commit');
-    if (dist > 0 && dist <= 2) {
-      return {
-        isValid: false,
-        errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git commit'? Try again.`,
-      };
-    }
-    if (secondWord !== 'commit') {
-      return {
-        isValid: false,
-        errorMessage: `> SYNTAX FAULT: Expected 'git commit -m "..."'. You typed 'git ${tokens[1]}'. Try '${topic.hint}'.`,
-      };
-    }
-  } else if (topic.id === 'merging') {
-    const dist = levenshteinDistance(secondWord, 'merge');
-    if (dist > 0 && dist <= 2) {
-      return {
-        isValid: false,
-        errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git merge'? Try again.`,
-      };
-    }
-    if (secondWord === 'merge' && tokens.length === 2) {
-      return {
-        isValid: false,
-        errorMessage: `> SYNTAX FAULT: Missing branch operand to merge. Specify a branch name, e.g., 'git merge feature/quantum-leap'.`,
-      };
-    }
-  } else if (topic.id === 'conflicts') {
-    if (secondWord !== 'commit' && secondWord !== 'add' && secondWord !== 'merge') {
-      return {
-        isValid: false,
-        errorMessage: `> SYNTAX FAULT: For conflict resolution, stage changes or commit. Try: '${topic.hint}'.`,
-      };
-    }
-  }
-
-  // 4. Word-by-word token comparison against topic hint
-  const expectedTokens = topic.hint.split(/\s+/);
-  for (let i = 0; i < Math.max(tokens.length, expectedTokens.length); i++) {
-    const userToken = tokens[i];
-    const expToken = expectedTokens[i];
-    if (userToken && expToken && userToken.toLowerCase() !== expToken.toLowerCase()) {
-      const dist = levenshteinDistance(userToken, expToken);
+  if (topic.id === 'init') {
+    if (subCmd !== 'init') {
+      const dist = getLevenshteinDistance(subCmd, 'init');
       if (dist <= 2) {
         return {
           isValid: false,
-          errorMessage: `> SYNTAX FAULT: You typed '${userToken}'. Did you mean '${expToken}'? Try again.`,
+          errorMessage: `Typo detected in subcommand: '${tokens[1]}' is misspelled. Did you mean 'init'? Correct syntax: '${topic.hint}'`,
         };
       }
+      return {
+        isValid: false,
+        errorMessage: `Unrecognized action '${tokens[1]}' for this stage. This lesson covers repository initialization. Expected: '${topic.hint}'.`,
+      };
     }
+
+    const customRepoName = tokens[2] || 'gitworld-project';
+    return { isValid: true, capturedArg: customRepoName };
+  }
+
+  if (topic.id === 'commit') {
+    if (subCmd !== 'commit') {
+      const dist = getLevenshteinDistance(subCmd, 'commit');
+      if (dist <= 2) {
+        return {
+          isValid: false,
+          errorMessage: `Typo detected in subcommand: '${tokens[1]}' is misspelled. Did you mean 'commit'? Correct syntax: '${topic.hint}'`,
+        };
+      }
+      return {
+        isValid: false,
+        errorMessage: `Unrecognized action '${tokens[1]}'. Stage 02 teaches commit snapshots. Expected: '${topic.hint}'.`,
+      };
+    }
+
+    // Check for commit message flag
+    const hasFlag = tokens.some((t) => t === '-m' || t === '-am' || t.startsWith('-m'));
+    if (!hasFlag && tokens.length > 2) {
+      return {
+        isValid: false,
+        errorMessage: `Missing commit flag: In Git, commit messages require the '-m' flag. Example: '${topic.hint}'`,
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  if (topic.id === 'branching') {
+    const isCheckoutB = tokens[1] === 'checkout' && tokens[2] === '-b';
+    const isSwitchC = tokens[1] === 'switch' && tokens[2] === '-c';
+    const isBranch = tokens[1] === 'branch';
+
+    if (!isCheckoutB && !isSwitchC && !isBranch) {
+      if (tokens[1] === 'checkout' && tokens.length < 3) {
+        return {
+          isValid: false,
+          errorMessage: `Incomplete checkout: To create a new branch, use 'git checkout -b <branch-name>' or 'git branch <name>'.`,
+        };
+      }
+      const distBranch = getLevenshteinDistance(tokens[1], 'branch');
+      if (distBranch <= 2) {
+        return {
+          isValid: false,
+          errorMessage: `Typo detected: '${tokens[1]}' is misspelled. Did you mean 'branch'? Correct syntax: '${topic.hint}'`,
+        };
+      }
+      return {
+        isValid: false,
+        errorMessage: `Unrecognized branching syntax '${tokens.slice(1).join(' ')}'. Use 'git branch <name>' or 'git checkout -b <name>'. Expected: '${topic.hint}'.`,
+      };
+    }
+
+    let branchName = 'feature/quantum-leap';
+    if (isCheckoutB || isSwitchC) {
+      branchName = tokens[3] || 'feature/quantum-leap';
+    } else if (isBranch) {
+      branchName = tokens[2] || 'feature/quantum-leap';
+    }
+
+    return { isValid: true, capturedArg: branchName };
+  }
+
+  if (topic.id === 'merging') {
+    if (subCmd !== 'merge') {
+      const dist = getLevenshteinDistance(subCmd, 'merge');
+      if (dist <= 2) {
+        return {
+          isValid: false,
+          errorMessage: `Typo detected in subcommand: '${tokens[1]}' is misspelled. Did you mean 'merge'? Correct syntax: '${topic.hint}'`,
+        };
+      }
+      return {
+        isValid: false,
+        errorMessage: `Unrecognized action '${tokens[1]}'. Stage 04 teaches merging branches. Expected: '${topic.hint}'.`,
+      };
+    }
+    const targetBranch = tokens[2] || 'feature/quantum-leap';
+    return { isValid: true, capturedArg: targetBranch };
+  }
+
+  if (topic.id === 'remote') {
+    if (subCmd !== 'push') {
+      const dist = getLevenshteinDistance(subCmd, 'push');
+      if (dist <= 2) {
+        return {
+          isValid: false,
+          errorMessage: `Typo detected in subcommand: '${tokens[1]}' is misspelled. Did you mean 'push'? Correct syntax: '${topic.hint}'`,
+        };
+      }
+      return {
+        isValid: false,
+        errorMessage: `Unrecognized action '${tokens[1]}'. Stage 05 teaches syncing remotes with 'git push'. Expected: '${topic.hint}'.`,
+      };
+    }
+    return { isValid: true };
+  }
+
+  // Fallback pattern match
+  if (topic.expectedPattern.test(trimmed)) {
+    return { isValid: true };
   }
 
   return {
     isValid: false,
-    errorMessage: `> SYNTAX FAULT: Unrecognized syntax '${trimmed}'. Did you mean '${topic.hint}'? Try again.`,
+    errorMessage: `Command syntax does not match lesson target. Expected: '${topic.hint}'.`,
   };
 }
 
-export default function TopicPage() {
+export default function TopicDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const rawId = (params?.id as string) || 'init';
-  const topic = TOPIC_REGISTRY[rawId] || TOPIC_REGISTRY.init;
+  const supabase = createClient();
 
-  // Global Zustand Store
+  const id = typeof params.id === 'string' ? params.id : 'init';
+  const topic = TOPIC_REGISTRY[id] || TOPIC_REGISTRY['init'];
+
+  // Global store states
   const {
     repoName,
-    currentBranch,
-    completedCommands,
     setRepoName,
+    currentBranch,
     setCurrentBranch,
     addCompletedCommand,
+    completedCommands,
+    addCompletedTopic,
+    completedTopics,
   } = useGitStore();
 
-  // Local State
-  const [terminalInput, setTerminalInput] = useState('');
+  // Local UI states
+  const [revealedCount, setRevealedCount] = useState<number>(1);
+  const [terminalInput, setTerminalInput] = useState<string>('');
   const [terminalHistory, setTerminalHistory] = useState<
-    { text: string; isUser?: boolean; isError?: boolean; isSuccess?: boolean }[]
+    Array<{ text: string; isError?: boolean; isSuccess?: boolean; isUser?: boolean }>
   >([]);
   const [errorFeedback, setErrorFeedback] = useState<string | null>(null);
-  const [isCommandLocked, setIsCommandLocked] = useState(false);
-  const [showAnimation, setShowAnimation] = useState(false);
-  const [showSuccessBadge, setShowSuccessBadge] = useState(false);
-  const [simulatedRepoName, setSimulatedRepoName] = useState(repoName || 'gitworld-project');
+  const [isCommandLocked, setIsCommandLocked] = useState<boolean>(false);
+  const [showAnimation, setShowAnimation] = useState<boolean>(false);
+  const [showSuccessBadge, setShowSuccessBadge] = useState<boolean>(false);
+  const [createdBranchName, setCreatedBranchName] = useState<string>('');
+  const [simulatedRepoName, setSimulatedRepoName] = useState<string>(repoName || 'gitworld-project');
 
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
 
-  // Initialize terminal welcome log
+  // Cards for sequential reveal
+  const bentoCards = [
+    {
+      step: 1,
+      tag: '01. FOUNDATION',
+      title: 'WHAT IT IS',
+      content: topic.theory.whatItIs,
+      accentBg: 'bg-[#D2E823] text-[#09090B]',
+    },
+    {
+      step: 2,
+      tag: '02. NECESSITY',
+      title: 'WHY WE NEED IT',
+      content: topic.theory.whyWeNeedIt,
+      accentBg: 'bg-white text-[#09090B]',
+    },
+    {
+      step: 3,
+      tag: '03. MECHANICS',
+      title: 'HOW IT WORKS',
+      content: topic.theory.howItWorks,
+      accentBg: 'bg-white text-[#09090B]',
+    },
+    {
+      step: 4,
+      tag: '04. ADVANTAGE',
+      title: 'HOW IT HELPS',
+      content: topic.theory.howItHelps,
+      accentBg: 'bg-[#D2E823] text-[#09090B]',
+    },
+  ];
+
+  // Initialize terminal on topic change
   useEffect(() => {
-    const activeRepo = repoName || 'gitworld-project';
-    setSimulatedRepoName(activeRepo);
+    setRevealedCount(1);
+    setTerminalInput('');
     setErrorFeedback(null);
+    setShowAnimation(false);
+    setShowSuccessBadge(false);
+    setIsCommandLocked(false);
 
+    // Initial greeting
     setTerminalHistory([
-      { text: `=== GITWORLD TERMINAL EMULATOR // ${topic.stageNum} ===` },
-      { text: `Topic Mission: ${topic.title}` },
-      { text: `Working Dir: ~/${activeRepo}` },
-      { text: `Current Branch: [${currentBranch}]` },
-      { text: `Hint: Execute '${topic.hint}' to pass quest.` },
-      { text: `--------------------------------------------------------` },
+      { text: `[GITWORLD FAULTLESS SHELL v2.4.0]` },
+      { text: `STAGE ${topic.stageNum}: ${topic.title}` },
+      { text: `PROTOCOL TARGET: Enter '${topic.hint}' to execute module.` },
+      { text: `Status: Awaiting input...` },
     ]);
 
-    // Focus input field automatically
+    // Check if topic is already completed
+    const isCompleted = completedTopics.includes(topic.id);
+    if (isCompleted) {
+      setIsCommandLocked(true);
+      setShowAnimation(true);
+      setShowSuccessBadge(true);
+    }
+
     setTimeout(() => {
       inputRef.current?.focus();
     }, 150);
-  }, [topic.id, repoName, currentBranch]);
+  }, [topic.id, topic.stageNum, topic.title, topic.hint, completedTopics]);
 
   // Auto-scroll terminal to bottom
   useEffect(() => {
@@ -466,13 +484,15 @@ export default function TopicPage() {
       return;
     }
 
-    // Command is valid! Clear error state and lock input
+    // Command is valid! Clear error state and lock input (single execution)
     setErrorFeedback(null);
     setTerminalInput('');
-    setIsCommandLocked(true); // Input can only be executed once
+    setIsCommandLocked(true);
 
     // State persistence logic
     let updatedRepo = repoName;
+    let updatedBranch = currentBranch;
+
     if (topic.id === 'init') {
       const customName = validation.capturedArg || 'gitworld-project';
       setRepoName(customName);
@@ -481,9 +501,12 @@ export default function TopicPage() {
     } else if (topic.id === 'branching') {
       const customBranch = validation.capturedArg || 'feature/quantum-leap';
       setCurrentBranch(customBranch);
+      setCreatedBranchName(customBranch);
+      updatedBranch = customBranch;
     }
 
     addCompletedCommand(cmd);
+    addCompletedTopic(topic.id);
 
     // Add feedback lines
     setTerminalHistory((prev) => [
@@ -500,7 +523,7 @@ export default function TopicPage() {
     // Trigger Quest Complete Sticker
     setTimeout(() => {
       setShowSuccessBadge(true);
-    }, 1200);
+    }, 1100);
 
     // Persist completion to Supabase user_progress table
     try {
@@ -516,30 +539,31 @@ export default function TopicPage() {
         } catch {}
       }
 
-      if (!currentCompleted.includes(topic.id)) {
-        const nextCompleted = [...currentCompleted, topic.id];
-        const nextXp = currentXp + topic.xp;
-        localStorage.setItem(
-          'gitworld_progress',
-          JSON.stringify({ completed_topics: nextCompleted, xp: nextXp })
+      const nextCompleted = currentCompleted.includes(topic.id)
+        ? currentCompleted
+        : [...currentCompleted, topic.id];
+      const nextXp = currentCompleted.includes(topic.id)
+        ? currentXp
+        : currentXp + topic.xp;
+
+      localStorage.setItem(
+        'gitworld_progress',
+        JSON.stringify({ completed_topics: nextCompleted, xp: nextXp })
+      );
+
+      if (authData?.user) {
+        await supabase.from('user_progress').upsert(
+          {
+            id: authData.user.id,
+            user_id: authData.user.id,
+            completed_topics: nextCompleted,
+            xp: nextXp,
+            repo_name: updatedRepo || '',
+            current_branch_name: updatedBranch || 'main',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
         );
-
-        useGitStore.getState().addCompletedTopic(topic.id);
-
-        if (authData?.user) {
-          await supabase.from('user_progress').upsert(
-            {
-              id: authData.user.id,
-              user_id: authData.user.id,
-              completed_topics: nextCompleted,
-              xp: nextXp,
-              repo_name: updatedRepo || useGitStore.getState().repoName || '',
-              current_branch_name: useGitStore.getState().currentBranch || 'main',
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'id' }
-          );
-        }
       }
     } catch (err) {
       console.warn('Could not sync progress to Supabase:', err);
@@ -547,38 +571,39 @@ export default function TopicPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F4E8] text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative pb-20">
+    <div className="min-h-screen bg-[#F8F4E8] text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative pb-24">
       <NoiseOverlay />
       <CustomCursor />
 
-      {/* Sticky Header */}
+      {/* Sticky Header with Topic Name & Back to Journey Button */}
       <header className="sticky top-4 z-40 px-4 sm:px-8 max-w-7xl mx-auto w-full">
         <div className="w-full h-16 sm:h-20 bg-[#F8F4E8]/90 backdrop-blur-[24px] border-2 border-[#09090B] rounded-[12px] px-4 sm:px-8 flex items-center justify-between shadow-[4px_4px_0px_0px_#09090B]">
+          {/* Left: Back to Journey Button & Topic Title */}
           <div className="flex items-center gap-3 sm:gap-4">
             <Link
               href="/journey"
-              className="p-2 sm:p-2.5 bg-white hover:bg-[#D2E823] border-2 border-[#09090B] rounded-[8px] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer flex items-center justify-center"
-              title="Return to Journey Curriculum"
+              className="px-3 py-2 bg-white hover:bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-[8px] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer flex items-center gap-1.5 font-heading text-xs uppercase"
+              title="Return to Curriculum Journey"
             >
               <ArrowLeft className="w-4 h-4 text-[#09090B]" />
+              <span className="hidden sm:inline">BACK TO JOURNEY</span>
+              <span className="sm:hidden">BACK</span>
             </Link>
 
             <div className="flex items-center gap-2">
-              <Link href="/journey" className="font-heading text-lg sm:text-2xl text-[#09090B] tracking-tighter hover:opacity-80 transition-opacity">
-                GITWORLD
-              </Link>
-              <span className="font-mono-brutal font-bold text-xs text-[#09090B]/40 hidden sm:inline">//</span>
-              <span className="font-mono-brutal font-bold text-xs uppercase text-[#09090B] bg-[#D2E823] px-2 py-0.5 border border-[#09090B] rounded shadow-[2px_2px_0px_0px_#09090B] hidden sm:inline-block">
-                {topic.stageNum}: {topic.stageName}
+              <span className="font-mono-brutal font-bold text-xs text-[#09090B]/40 hidden md:inline">//</span>
+              <span className="font-heading text-base sm:text-xl text-[#09090B] tracking-tight">
+                {topic.stageNum}. {topic.stageName}
               </span>
             </div>
           </div>
 
+          {/* Right: Active Branch & XP */}
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 bg-white border-2 border-[#09090B] rounded-[8px] px-3 py-1.5 shadow-[2px_2px_0px_0px_#09090B]">
               <GitBranch className="w-3.5 h-3.5 text-[#09090B]" />
               <span className="font-mono-brutal text-xs font-bold text-[#09090B]">
-                {currentBranch}
+                {currentBranch || 'main'}
               </span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-[8px] font-mono-brutal text-xs font-bold shadow-[2px_2px_0px_0px_#09090B]">
@@ -589,13 +614,13 @@ export default function TopicPage() {
         </div>
       </header>
 
-      {/* Main Content Area */}
+      {/* Main Content Area - 12-Column Grid */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 pt-8 sm:pt-12 relative z-10">
         {/* Topic Title Header */}
         <div className="mb-8 border-b-2 border-[#09090B] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="inline-block px-3 py-1 bg-white text-[#09090B] border-2 border-[#09090B] rounded-full text-xs font-mono-brutal font-bold uppercase tracking-wider mb-2 shadow-[2px_2px_0px_0px_#09090B]">
-              {topic.stageNum} // MISSION
+              STAGE {topic.stageNum} // MISSION
             </div>
             <h1 className="font-heading text-3xl sm:text-5xl text-[#09090B] tracking-tighter">
               {topic.title}
@@ -603,70 +628,135 @@ export default function TopicPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="font-mono-brutal text-xs font-bold bg-[#F8F4E8] border border-[#09090B] px-3 py-1.5 rounded-[8px]">
+            <span className="font-mono-brutal text-xs font-bold bg-white border-2 border-[#09090B] px-3 py-1.5 rounded-[8px] shadow-[2px_2px_0px_0px_#09090B]">
               REPO: ~/{simulatedRepoName}
             </span>
           </div>
         </div>
 
-        {/* 2-Column Split: Theory (Left) & Sandbox Terminal (Right) */}
+        {/* 12-Column Grid: Left Column (5 cols) & Right Column (7 cols) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Deep Git Theory (5 Cols) */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white border-2 border-[#09090B] rounded-[20px] p-6 shadow-[6px_6px_0px_0px_#09090B] space-y-5">
-              <div className="flex items-center gap-2 border-b-2 border-[#09090B] pb-3">
-                <FileCode className="w-5 h-5 text-[#09090B]" />
-                <h3 className="font-heading text-lg text-[#09090B] tracking-tight">
-                  THEORY // CORE CONCEPTS
-                </h3>
-              </div>
-
-              {/* 1. What it is */}
+          {/* ========================================================= */}
+          {/* LEFT COLUMN (5 cols - Theory Bento with Sequential Reveal) */}
+          {/* ========================================================= */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Pagination Control Bar */}
+            <div className="bg-[#09090B] text-white border-2 border-[#09090B] rounded-[16px] p-4 shadow-[4px_4px_0px_0px_#09090B] flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
               <div>
-                <h4 className="font-mono-brutal text-xs font-bold uppercase text-[#09090B] bg-[#D2E823] px-2 py-0.5 border border-[#09090B] rounded inline-block mb-1.5 shadow-[1px_1px_0px_0px_#09090B]">
-                  01. WHAT IT IS
-                </h4>
-                <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed">
-                  {topic.theory.whatItIs}
-                </p>
+                <span className="font-mono-brutal text-[10px] font-bold text-[#D2E823] uppercase tracking-wider block mb-0.5">
+                  THEORY BENTO // CURRICULUM
+                </span>
+                <span className="font-heading text-sm text-white">
+                  CARD {revealedCount} OF 4 REVEALED
+                </span>
               </div>
 
-              {/* 2. Why we need it */}
-              <div>
-                <h4 className="font-mono-brutal text-xs font-bold uppercase text-[#09090B] bg-white px-2 py-0.5 border border-[#09090B] rounded inline-block mb-1.5 shadow-[1px_1px_0px_0px_#09090B]">
-                  02. WHY WE NEED IT
-                </h4>
-                <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed">
-                  {topic.theory.whyWeNeedIt}
-                </p>
-              </div>
+              <div className="flex items-center gap-2">
+                {revealedCount > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setRevealedCount((prev) => Math.max(1, prev - 1))}
+                    className="px-2.5 py-1 bg-white hover:bg-[#F8F4E8] text-[#09090B] font-heading text-xs uppercase rounded-[6px] border border-[#09090B] shadow-[1px_1px_0px_0px_#D2E823] transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>PREV</span>
+                  </button>
+                )}
 
-              {/* 3. How it works */}
-              <div>
-                <h4 className="font-mono-brutal text-xs font-bold uppercase text-[#09090B] bg-white px-2 py-0.5 border border-[#09090B] rounded inline-block mb-1.5 shadow-[1px_1px_0px_0px_#09090B]">
-                  03. HOW IT WORKS
-                </h4>
-                <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed">
-                  {topic.theory.howItWorks}
-                </p>
+                {revealedCount < 4 ? (
+                  <button
+                    type="button"
+                    onClick={() => setRevealedCount((prev) => Math.min(4, prev + 1))}
+                    className="px-3 py-1 bg-[#D2E823] hover:bg-white text-[#09090B] font-heading text-xs uppercase tracking-tight rounded-[6px] border border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>NEXT</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <span className="px-2.5 py-1 bg-[#D2E823] text-[#09090B] font-mono-brutal text-[10px] font-bold uppercase rounded border border-[#09090B]">
+                    ALL 4 REVEALED ✓
+                  </span>
+                )}
               </div>
+            </div>
 
-              {/* 4. The solution */}
-              <div className="p-3 bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] shadow-[2px_2px_0px_0px_#09090B]">
-                <h4 className="font-mono-brutal text-[11px] font-bold uppercase text-[#09090B] mb-1">
-                  &gt; THE PROTOCOL COMMAND:
-                </h4>
-                <code className="font-mono-brutal text-xs font-bold text-[#09090B] bg-white px-2 py-1 border border-[#09090B] rounded block">
-                  {topic.hint}
-                </code>
+            {/* 4 Brutalist Bento Cards Stacked */}
+            <div className="space-y-3">
+              {bentoCards.map((card) => {
+                const isRevealed = card.step <= revealedCount;
+                return (
+                  <motion.div
+                    key={card.step}
+                    initial={false}
+                    animate={{
+                      opacity: isRevealed ? 1 : 0.45,
+                      scale: isRevealed ? 1 : 0.98,
+                    }}
+                    transition={{ duration: 0.25 }}
+                    className={`border-2 border-[#09090B] rounded-[16px] p-5 transition-all select-none ${
+                      isRevealed
+                        ? 'bg-white shadow-[4px_4px_0px_0px_#09090B]'
+                        : 'bg-[#F8F4E8]/60 border-dashed border-[#09090B]/40 shadow-none'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span
+                        className={`font-mono-brutal text-[10px] font-bold px-2 py-0.5 rounded border border-[#09090B] shadow-[1px_1px_0px_0px_#09090B] ${
+                          isRevealed ? card.accentBg : 'bg-zinc-200 text-zinc-500'
+                        }`}
+                      >
+                        {card.tag}
+                      </span>
+                      <span className="font-mono-brutal text-[10px] font-bold text-[#09090B]/50">
+                        {isRevealed ? 'REVEALED' : 'LOCKED'}
+                      </span>
+                    </div>
+
+                    <h3 className="font-heading text-base sm:text-lg text-[#09090B] tracking-tight mb-2">
+                      {card.title}
+                    </h3>
+
+                    {isRevealed ? (
+                      <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed">
+                        {card.content}
+                      </p>
+                    ) : (
+                      <div className="py-1 flex items-center justify-between text-xs font-mono-brutal text-[#09090B]/60">
+                        <span>[Card hidden]</span>
+                        <button
+                          type="button"
+                          onClick={() => setRevealedCount(card.step)}
+                          className="text-[#09090B] font-bold underline hover:text-black cursor-pointer text-[11px]"
+                        >
+                          Reveal Card {card.step} &rarr;
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Protocol Target Command Card */}
+            <div className="p-4 bg-[#D2E823] border-2 border-[#09090B] rounded-[16px] shadow-[4px_4px_0px_0px_#09090B]">
+              <div className="flex items-center gap-2 mb-2">
+                <TerminalIcon className="w-4 h-4 text-[#09090B]" />
+                <span className="font-mono-brutal text-[11px] font-bold uppercase text-[#09090B]">
+                  TARGET PROTOCOL COMMAND
+                </span>
               </div>
+              <code className="font-mono-brutal text-xs font-bold text-[#09090B] bg-white px-3 py-2 border-2 border-[#09090B] rounded-[8px] block shadow-[2px_2px_0px_0px_#09090B] select-all">
+                {topic.hint}
+              </code>
             </div>
           </div>
 
-          {/* Right Column: Interactive Sandbox & Terminal Emulator (7 Cols) */}
+          {/* ========================================================= */}
+          {/* RIGHT COLUMN (7 cols - Failsafe Terminal & Visual Timeline)*/}
+          {/* ========================================================= */}
           <div className="lg:col-span-7 space-y-6">
-            {/* Terminal Window */}
-            <div className="bg-[#09090B] border-2 border-[#09090B] rounded-[20px] shadow-[8px_8px_0px_0px_#09090B] overflow-hidden">
+            {/* Black Terminal Box (#09090B) with #D2E823 Border & Hard Shadow */}
+            <div className="bg-[#09090B] border-2 border-[#D2E823] rounded-[16px] shadow-[8px_8px_0px_0px_#09090B] overflow-hidden">
               {/* Terminal Titlebar */}
               <div className="bg-[#18181B] px-4 py-3 border-b-2 border-[#27272A] flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -674,18 +764,18 @@ export default function TopicPage() {
                   <span className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#09090B]" />
                   <span className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#09090B]" />
                   <span className="font-mono-brutal text-xs text-[#A1A1AA] ml-2 font-bold">
-                    bash // gitworld-v2.0
+                    bash // gitworld-failsafe-emulator
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono-brutal text-[11px] text-[#D2E823] bg-[#09090B] px-2 py-0.5 rounded border border-[#27272A]">
-                    {currentBranch}
+                    {currentBranch || 'main'}
                   </span>
                 </div>
               </div>
 
-              {/* Terminal Body */}
-              <div className="p-4 sm:p-6 font-mono-brutal text-xs sm:text-sm text-[#F4F4F5] space-y-3 min-h-[340px] max-h-[460px] overflow-y-auto">
+              {/* Terminal Body with Scrollable Log */}
+              <div className="p-4 sm:p-6 font-mono-brutal text-xs sm:text-sm text-[#F4F4F5] space-y-3 min-h-[300px] max-h-[420px] overflow-y-auto">
                 {terminalHistory.map((item, idx) => (
                   <div
                     key={idx}
@@ -703,34 +793,25 @@ export default function TopicPage() {
                   </div>
                 ))}
 
-                {/* Smart Failsafe Brutalist Error Block */}
+                {/* Smart Failsafe Red #FF3333 Error Card */}
                 {errorFeedback && (
                   <motion.div
                     initial={{ opacity: 0, y: -4, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="p-3 bg-[#FF3333] text-[#09090B] border-2 border-[#09090B] rounded-[8px] shadow-[4px_4px_0px_0px_#09090B] font-mono-brutal text-xs font-bold select-none"
+                    className="p-4 bg-[#FF3333] text-[#09090B] border-2 border-[#09090B] rounded-[8px] shadow-[4px_4px_0px_0px_#09090B] font-mono-brutal text-xs font-bold select-none"
                   >
-                    <div className="flex items-center gap-2 mb-1 text-[#09090B]">
+                    <div className="flex items-center gap-2 mb-1.5 text-[#09090B]">
                       <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                      <span className="uppercase tracking-wider">COMMAND FAULT DETECTED</span>
+                      <span className="uppercase tracking-wider font-heading text-xs">
+                        COMMAND SYNTAX FAULT DETECTED
+                      </span>
                     </div>
-                    <p className="leading-snug">{errorFeedback}</p>
+                    <p className="leading-relaxed">{errorFeedback}</p>
                   </motion.div>
                 )}
 
-                {/* Dynamic SVG Branching Animation (Topic 03 Branching Specific) */}
-                {topic.id === 'branching' && showAnimation && (
-                  <div className="py-4">
-                    <BranchingVisualizer
-                      isBranchCreated={true}
-                      currentBranch={currentBranch !== 'main' ? currentBranch : 'feature/quantum-leap'}
-                      mainBranchName="main"
-                    />
-                  </div>
-                )}
-
-                {/* Animated Graph / Box for other topics */}
-                {topic.id !== 'branching' && showAnimation && (
+                {/* Animated Graph Box on Success */}
+                {showAnimation && topic.id !== 'branching' && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -744,7 +825,7 @@ export default function TopicPage() {
                       &gt; Object: commit e89f41b2c7... (tree 9a01fd...)
                     </div>
                     <div className="text-[11px] text-[#A1A1AA]">
-                      &gt; Ref updated: refs/heads/{currentBranch}
+                      &gt; Ref updated: refs/heads/{currentBranch || 'main'}
                     </div>
                   </motion.div>
                 )}
@@ -752,13 +833,13 @@ export default function TopicPage() {
                 <div ref={terminalEndRef} />
               </div>
 
-              {/* Terminal Command Input Form */}
+              {/* Terminal Command Input Form (>_ prompt) */}
               <form
                 onSubmit={handleCommandSubmit}
                 className="p-3 sm:p-4 bg-[#18181B] border-t-2 border-[#27272A] flex items-center gap-3"
               >
                 <span className="text-[#D2E823] font-mono-brutal font-bold text-sm sm:text-base select-none">
-                  $&gt;
+                  &gt;_
                 </span>
                 <input
                   ref={inputRef}
@@ -768,7 +849,7 @@ export default function TopicPage() {
                   disabled={isCommandLocked}
                   placeholder={
                     isCommandLocked
-                      ? 'Quest validated! See next stage below.'
+                      ? '[LOCKED] Command executed successfully. Visual timeline updated below.'
                       : `Type '${topic.hint}'`
                   }
                   className="flex-1 bg-transparent text-[#F4F4F5] font-mono-brutal text-xs sm:text-sm outline-none placeholder:text-[#52525B] disabled:cursor-not-allowed"
@@ -784,7 +865,19 @@ export default function TopicPage() {
               </form>
             </div>
 
-            {/* Success Quest Banner sticker */}
+            {/* ========================================================= */}
+            {/* VISUAL TIMELINE: Below Terminal (4px Vertical Red Line)   */}
+            {/* ========================================================= */}
+            <div>
+              <BranchingVisualizer
+                isBranchCreated={showAnimation || isCommandLocked}
+                currentBranch={createdBranchName || currentBranch || 'feature/quantum-leap'}
+                mainBranchName="main"
+                stageName={topic.stageName}
+              />
+            </div>
+
+            {/* QUEST COMPLETE Badge & Next/Back Buttons */}
             <AnimatePresence>
               {showSuccessBadge && (
                 <motion.div
@@ -794,26 +887,37 @@ export default function TopicPage() {
                   className="p-6 bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-[16px] shadow-[6px_6px_0px_0px_#09090B] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-[12px] bg-[#09090B] text-[#D2E823] flex items-center justify-center font-heading text-xl border border-[#09090B] flex-shrink-0">
+                    <div className="w-12 h-12 rounded-[12px] bg-[#09090B] text-[#D2E823] flex items-center justify-center font-heading text-xl border-2 border-[#09090B] flex-shrink-0">
                       ✓
                     </div>
                     <div>
-                      <h4 className="font-heading text-xl text-[#09090B] tracking-tight leading-none mb-1">
-                        STAGE QUEST COMPLETED!
+                      <div className="inline-block px-2 py-0.5 bg-white border border-[#09090B] rounded text-[10px] font-mono-brutal font-bold uppercase tracking-wider mb-1 shadow-[1px_1px_0px_0px_#09090B]">
+                        QUEST COMPLETE
+                      </div>
+                      <h4 className="font-heading text-xl text-[#09090B] tracking-tight leading-none">
+                        STAGE QUEST VALIDATED!
                       </h4>
-                      <p className="font-mono-brutal text-xs font-bold text-[#09090B]/80">
+                      <p className="font-mono-brutal text-xs font-bold text-[#09090B]/80 mt-1">
                         Earned +{topic.xp} XP. State saved to local & cloud ledger.
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <Link
+                      href="/journey"
+                      className="py-2.5 px-4 bg-white hover:bg-[#F8F4E8] text-[#09090B] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1.5 cursor-pointer text-center"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>BACK TO JOURNEY</span>
+                    </Link>
+
                     {topic.nextTopicId ? (
                       <Link
                         href={`/topic/${topic.nextTopicId}`}
                         className="py-2.5 px-4 bg-[#09090B] hover:bg-white hover:text-[#09090B] text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-2 cursor-pointer text-center"
                       >
-                        <span>NEXT: {topic.nextTopicTitle}</span>
+                        <span>NEXT LESSON: {topic.nextTopicTitle}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Link>
                     ) : (
@@ -821,7 +925,7 @@ export default function TopicPage() {
                         href="/journey"
                         className="py-2.5 px-4 bg-[#09090B] hover:bg-white hover:text-[#09090B] text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-2 cursor-pointer text-center"
                       >
-                        <span>BACK TO JOURNEY TREE</span>
+                        <span>JOURNEY COMPLETED!</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Link>
                     )}

@@ -76,7 +76,7 @@ export default function BranchingVisualizer({
           <rect width="520" height="240" fill="url(#brutalist-grid-pattern)" />
 
           {/* ============================================================ */}
-          {/* THE MAIN TIMELINE (Striking Red #FF3333, 6px Vertical Line) */}
+          {/* THE MAIN TIMELINE (Striking Red #FF3333, 4px Vertical Line) */}
           {/* ============================================================ */}
           <line
             x1="90"
@@ -84,7 +84,7 @@ export default function BranchingVisualizer({
             x2="90"
             y2="215"
             stroke="#FF3333"
-            strokeWidth="6"
+            strokeWidth="4"
             strokeLinecap="square"
           />
 
