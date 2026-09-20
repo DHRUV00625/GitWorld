@@ -1,37 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-export interface GitStoreState {
-  userId: string | null;
-  repoName: string;
-  repo_name: string;
-  currentBranch: string;
-  current_branch_name: string;
-  completedTopics: string[];
-  completed_topics: string[];
-  completedCommands: string[];
-  setUserId: (userId: string | null) => void;
-  setRepoName: (name: string) => void;
-  setCurrentBranch: (branch: string) => void;
-  setCompletedTopics: (topics: string[]) => void;
-  addCompletedTopic: (topicId: string) => void;
-  addCompletedCommand: (command: string) => void;
-  initializeFromUserProgress: (record: {
-    userId?: string | null;
-    id?: string;
-    user_id?: string;
-    completed_topics?: string[];
-    completedTopics?: string[];
-    repo_name?: string;
-    repoName?: string;
-    current_branch_name?: string;
-    currentBranch?: string;
-  } | any) => void;
-  resetGitState: () => void;
-  logout: (supabase?: any, router?: any) => Promise<void>;
-}
-
-export const useGitStore = create<GitStoreState>()(
+export const useGitStore = create()(
   persist(
     (set) => ({
       userId: null,
@@ -42,30 +12,30 @@ export const useGitStore = create<GitStoreState>()(
       completedTopics: [],
       completed_topics: [],
       completedCommands: [],
-      setUserId: (userId: string | null) => set({ userId }),
-      setRepoName: (name: string) => {
+      setUserId: (userId) => set({ userId }),
+      setRepoName: (name) => {
         const clean = name ? name.trim() : '';
         set({ repoName: clean, repo_name: clean });
       },
-      setCurrentBranch: (branch: string) => {
+      setCurrentBranch: (branch) => {
         const clean = branch ? branch.trim() : 'main';
         set({ currentBranch: clean, current_branch_name: clean });
       },
-      setCompletedTopics: (topics: string[]) =>
+      setCompletedTopics: (topics) =>
         set({ completedTopics: topics, completed_topics: topics }),
-      addCompletedTopic: (topicId: string) =>
+      addCompletedTopic: (topicId) =>
         set((state) => {
           const list = state.completedTopics || [];
           const updated = list.includes(topicId) ? list : [...list, topicId];
           return { completedTopics: updated, completed_topics: updated };
         }),
-      addCompletedCommand: (command: string) =>
+      addCompletedCommand: (command) =>
         set((state) => ({
           completedCommands: state.completedCommands.includes(command)
             ? state.completedCommands
             : [...state.completedCommands, command],
         })),
-      initializeFromUserProgress: (record: any) => {
+      initializeFromUserProgress: (record) => {
         const uid = record?.userId || record?.id || record?.user_id || null;
         const topics = record?.completed_topics || record?.completedTopics || ['init'];
         const repo = record?.repo_name || record?.repoName || '';
@@ -91,21 +61,18 @@ export const useGitStore = create<GitStoreState>()(
           completed_topics: [],
           completedCommands: [],
         }),
-      logout: async (supabase?: any, router?: any) => {
+      logout: async (supabase, router) => {
         await logoutUser(supabase, router);
       },
     }),
     {
       name: 'gitworld-storage',
-      storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : (undefined as any))),
+      storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : undefined)),
     }
   )
 );
 
-/**
- * Logout function: signs out of Supabase, purges localStorage 'gitworld-storage', resets store state, and navigates to '/'
- */
-export const logoutUser = async (supabase?: any, router?: any) => {
+export const logoutUser = async (supabase, router) => {
   try {
     if (supabase?.auth?.signOut) {
       await supabase.auth.signOut();

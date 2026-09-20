@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import JourneyHeader from '@/components/JourneyHeader';
 import QuestModal, { QuestNodeData } from '@/components/QuestModal';
 import NoiseOverlay from '@/components/NoiseOverlay';
 import CustomCursor from '@/components/CustomCursor';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
+import { useGitStore, logoutUser } from '@/store/useGitStore';
 import {
   GitCommit,
   GitBranch,
@@ -128,58 +129,111 @@ export default function JourneyTimelinePage() {
 
   // Track scroll percentage for HUD indicator
   useEffect(() => {
-    const unsubscribe = scrollYProgress.on('change', (latest) => {
+    const unsubscribe = scrollYProgress.on('change', (latest: number) => {
       setScrollPercent(Math.round(latest * 100));
     });
     return () => unsubscribe();
   }, [scrollYProgress]);
 
-  // Load user session & fetch completed_topics from user_progress table
+  // Load user session & bind progress strictly to authenticated user's ID
   useEffect(() => {
-    async function loadProgress() {
+    async function checkAuthAndLoadProgress() {
       try {
-        const { data: authData } = await supabase.auth.getUser();
-        if (authData?.user) {
-          setUser(authData.user);
+        const { data: authData, error: authError } = await supabase.auth.getUser();
 
-          // Fetch progression from user_progress table
-          const { data: progressData, error: dbError } = await supabase
-            .from('user_progress')
-            .select('completed_topics, xp')
-            .eq('user_id', authData.user.id)
-            .maybeSingle();
+        // If no authenticated user exists, immediately redirect to /
+        if (!authData?.user || authError) {
+          useGitStore.getState().resetGitState();
+          router.push('/');
+          return;
+        }
 
-          if (progressData && !dbError) {
-            if (Array.isArray(progressData.completed_topics)) {
-              setCompletedTopics(progressData.completed_topics);
-            }
-            if (typeof progressData.xp === 'number') {
-              setTotalXp(progressData.xp);
-            }
-          } else {
-            // Check localStorage fallback if table is empty or pending migrations
-            const cached = localStorage.getItem('gitworld_progress');
-            if (cached) {
-              const parsed = JSON.parse(cached);
-              if (parsed.completed_topics) setCompletedTopics(parsed.completed_topics);
-              if (parsed.xp) setTotalXp(parsed.xp);
-            }
-          }
+        const currentUser = authData.user;
+        setUser(currentUser);
+
+        // If switching accounts or store has data from another user, purge stale state
+        const prevStoreUserId = useGitStore.getState().userId;
+        if (prevStoreUserId && prevStoreUserId !== currentUser.id) {
+          useGitStore.getState().resetGitState();
+        }
+
+        // Fetch that specific user's row from user_progress using .eq('id', user.id)
+        let progressRow: any = null;
+        const { data: byId, error: errId } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('id', currentUser.id)
+          .maybeSingle();
+
+        if (byId && !errId) {
+          progressRow = byId;
         } else {
-          // Guest mode fallback
-          const cached = localStorage.getItem('gitworld_progress');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (parsed.completed_topics) setCompletedTopics(parsed.completed_topics);
-            if (parsed.xp) setTotalXp(parsed.xp);
+          // Fallback in case table schema uses user_id
+          const { data: byUserId } = await supabase
+            .from('user_progress')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+          if (byUserId) progressRow = byUserId;
+        }
+
+        if (progressRow) {
+          const topics = Array.isArray(progressRow.completed_topics)
+            ? progressRow.completed_topics
+            : ['init'];
+          const xp = typeof progressRow.xp === 'number' ? progressRow.xp : 100;
+          const repo = progressRow.repo_name || '';
+          const branch = progressRow.current_branch_name || 'main';
+
+          setCompletedTopics(topics);
+          setTotalXp(xp);
+
+          // Initialize or overwrite the store with the database record
+          useGitStore.getState().initializeFromUserProgress({
+            userId: currentUser.id,
+            completed_topics: topics,
+            repo_name: repo,
+            current_branch_name: branch,
+          });
+        } else {
+          // New authenticated user without existing row: initialize genesis progress bound to this user
+          const initialTopics = ['init'];
+          const initialXp = 100;
+
+          setCompletedTopics(initialTopics);
+          setTotalXp(initialXp);
+
+          useGitStore.getState().initializeFromUserProgress({
+            userId: currentUser.id,
+            completed_topics: initialTopics,
+            repo_name: '',
+            current_branch_name: 'main',
+          });
+
+          // Insert or upsert initial record for this user
+          try {
+            await supabase.from('user_progress').upsert({
+              id: currentUser.id,
+              user_id: currentUser.id,
+              completed_topics: initialTopics,
+              xp: initialXp,
+              repo_name: '',
+              current_branch_name: 'main',
+              updated_at: new Date().toISOString(),
+            });
+          } catch (insertErr) {
+            console.warn('Could not insert genesis user_progress:', insertErr);
           }
         }
       } catch (err) {
-        console.warn('Could not query user_progress table, using local progression state:', err);
+        console.warn('Auth validation failed, redirecting to /:', err);
+        useGitStore.getState().resetGitState();
+        router.push('/');
       }
     }
-    loadProgress();
-  }, []);
+
+    checkAuthAndLoadProgress();
+  }, [router, supabase]);
 
   // Determine if a node is unlocked based on completedTopics
   const isNodeUnlocked = (id: string) => {
@@ -225,17 +279,21 @@ export default function JourneyTimelinePage() {
       JSON.stringify({ completed_topics: newCompleted, xp: newXp })
     );
 
+    // Update Zustand store
+    useGitStore.getState().addCompletedTopic(id);
+
     // Persist to Supabase user_progress table
     try {
       if (user) {
         await supabase.from('user_progress').upsert(
           {
+            id: user.id,
             user_id: user.id,
             completed_topics: newCompleted,
             xp: newXp,
             updated_at: new Date().toISOString(),
           },
-          { onConflict: 'user_id' }
+          { onConflict: 'id' }
         );
       }
     } catch (err) {
@@ -259,445 +317,422 @@ export default function JourneyTimelinePage() {
       description: cfg.description,
       commands: cfg.commands,
       xp: cfg.xp,
-      status: completed ? 'completed' : unlocked ? 'active' : 'locked',
+      isUnlocked: unlocked,
+      isCompleted: completed,
+      requires: cfg.requires,
       badge: cfg.badge,
     };
   };
 
-  const unlockedCount = ORDERED_TOPIC_IDS.filter(isNodeUnlocked).length;
-  const completedCount = ORDERED_TOPIC_IDS.filter(isNodeCompleted).length;
-  const currentLevel = Math.max(1, Math.floor(totalXp / 200) + 1);
-
-  // Strict 90-Degree Orthogonal Zigzag SVG Path Definition for Desktop
-  // viewBox: 0 0 1000 3000
-  // Left node anchor: X=250. Right node anchor: X=750. Central spine: X=500.
-  const desktopOrthogonalPath = `
-    M 500 40
-    V 160
-    H 250
-    V 420
-    H 500
-    V 720
-    H 750
-    V 980
-    H 500
-    V 1280
-    H 250
-    V 1540
-    H 500
-    V 1840
-    H 750
-    V 2100
-    H 500
-    V 2400
-    H 250
-    V 2660
-    H 500
-    V 2900
-  `;
-
-  // Strict 90-Degree Orthogonal Path for Mobile (Single Column Spine on Left)
-  // viewBox: 0 0 400 3000
-  const mobileOrthogonalPath = `
-    M 40 40
-    V 160
-    H 80
-    V 420
-    H 40
-    V 720
-    H 80
-    V 980
-    H 40
-    V 1280
-    H 80
-    V 1540
-    H 40
-    V 1840
-    H 80
-    V 2100
-    H 40
-    V 2400
-    H 80
-    V 2660
-    H 40
-    V 2900
-  `;
-
   return (
-    <div className="min-h-screen bg-[#F8F4E8] text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative">
-      {/* Film Grain Texture & Interactive Custom Cursor */}
+    <div className="min-h-screen bg-[#F8F4E8] text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative pb-32">
       <NoiseOverlay />
       <CustomCursor />
 
-      {/* Sticky Neo-Brutalist Navigation Header */}
-      <JourneyHeader userEmail={user?.email} xp={totalXp} level={currentLevel} />
+      {/* Sticky Header with Level & Sign Out */}
+      <JourneyHeader
+        userEmail={user?.email}
+        xp={totalXp}
+        level={Math.floor(totalXp / 200) + 1}
+      />
 
-      {/* Brutalist HUD / Scroll Tracker Pill (Floating on bottom right) */}
-      <div className="fixed bottom-6 right-6 z-40 hidden sm:flex items-center gap-2 bg-[#09090B] text-[#D2E823] border-2 border-[#09090B] px-4 py-2 rounded-[8px] shadow-[4px_4px_0px_0px_#D2E823] font-mono-brutal text-xs font-bold pointer-events-none">
-        <Compass className="w-4 h-4 animate-spin" style={{ animationDuration: '6s' }} />
-        <span>TIMELINE // {scrollPercent}% SCROLLED</span>
-        <span className="text-zinc-500">|</span>
-        <span>{completedCount}/5 DONE</span>
-      </div>
-
-      {/* Locked Node Jagged Toast Banner */}
-      <AnimatePresence>
-        {lockedNotice && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.15 }}
-            className="fixed top-24 z-50 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pointer-events-none"
-          >
-            <div className="bg-[#09090B] text-[#D2E823] border-2 border-[#D2E823] rounded-[10px] p-3.5 shadow-[4px_4px_0px_0px_#09090B] flex items-center gap-3 font-mono-brutal text-xs font-bold pointer-events-auto">
-              <AlertCircle className="w-5 h-5 text-[#D2E823] shrink-0" />
-              <span className="flex-1">{lockedNotice}</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Top Briefing Header */}
-      <header className="max-w-6xl mx-auto px-4 sm:px-8 pt-8 sm:pt-12 w-full">
-        <div className="bg-white border-2 border-[#09090B] rounded-[16px] p-6 sm:p-8 shadow-[6px_6px_0px_0px_#09090B]">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#D2E823] text-[#09090B] font-mono-brutal font-bold text-xs uppercase border-2 border-[#09090B] rounded-full shadow-[2px_2px_0px_0px_#09090B]">
-                <Shield className="w-3.5 h-3.5" />
-                <span>SCROLL-LINKED ORTHOGONAL TIMELINE</span>
-              </div>
-              <h1 className="font-heading text-3xl sm:text-5xl text-[#09090B] tracking-tighter">
-                THE GIT TIMELINE
-              </h1>
-              <p className="text-sm text-[#09090B]/80 font-medium leading-relaxed">
-                Scroll down to track the 4px orthogonal journey line. Alternating nodes unlock sequentially. Click <code className="bg-zinc-100 px-1.5 py-0.5 border border-black font-bold">MARK AS DONE</code> to persist your milestones into the Supabase <code className="bg-zinc-100 px-1.5 py-0.5 border border-black font-bold">user_progress</code> table.
-              </p>
-            </div>
-
-            {/* Brutalist Stats Counters */}
-            <div className="flex flex-wrap sm:flex-nowrap gap-3 sm:gap-4 w-full lg:w-auto">
-              <div className="flex-1 sm:w-28 bg-[#F8F4E8] border-2 border-[#09090B] rounded-[10px] p-3 text-center shadow-[3px_3px_0px_0px_#09090B]">
-                <span className="font-mono-brutal text-[10px] text-[#09090B]/70 uppercase block font-bold">COMPLETED</span>
-                <span className="font-heading text-2xl text-[#09090B]">{completedCount} / 5</span>
-              </div>
-              <div className="flex-1 sm:w-28 bg-[#D2E823] border-2 border-[#09090B] rounded-[10px] p-3 text-center shadow-[3px_3px_0px_0px_#09090B]">
-                <span className="font-mono-brutal text-[10px] text-[#09090B]/70 uppercase block font-bold">UNLOCKED</span>
-                <span className="font-heading text-2xl text-[#09090B]">{unlockedCount} / 5</span>
-              </div>
-              <div className="flex-1 sm:w-36 bg-[#09090B] text-[#D2E823] border-2 border-[#09090B] rounded-[10px] p-3 text-center shadow-[3px_3px_0px_0px_#09090B]">
-                <span className="font-mono-brutal text-[10px] text-zinc-400 uppercase block font-bold">TOTAL XP</span>
-                <span className="font-heading text-2xl">{totalXp} XP</span>
-              </div>
-            </div>
+      {/* Main Container */}
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 pt-8 sm:pt-12 relative z-10">
+        {/* Page Hero Banner */}
+        <div className="text-left mb-12 sm:mb-16 border-b-2 border-[#09090B] pb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#D2E823] border-2 border-[#09090B] rounded-full text-xs font-mono-brutal font-bold uppercase tracking-wider mb-4 shadow-[2px_2px_0px_0px_#09090B]">
+            <Compass className="w-3.5 h-3.5" />
+            <span>CURRICULUM TREE // 5 STAGES</span>
           </div>
+          <h1 className="font-heading text-4xl sm:text-6xl md:text-7xl text-[#09090B] tracking-tighter leading-none mb-4">
+            GITWORLD JOURNEY
+          </h1>
+          <p className="text-sm sm:text-base text-[#09090B]/80 max-w-2xl font-medium leading-relaxed">
+            Scroll down the orthogonal timeline to advance through cryptographic Git concepts. Click any unlocked stage to launch its interactive terminal sandbox.
+          </p>
         </div>
-      </header>
 
-      {/* ========================================================= */}
-      {/* VERTICALLY SCROLLING TIMELINE CONTAINER */}
-      {/* ========================================================= */}
-      <main
-        ref={timelineContainerRef}
-        className="relative max-w-6xl mx-auto px-4 sm:px-8 pt-12 pb-36 w-full"
-      >
-        {/* ======================================================= */}
-        {/* ORTHOGONAL SVG JOURNEY LINE (DESKTOP: hidden on mobile) */}
-        {/* ======================================================= */}
-        <div className="hidden md:block absolute inset-0 w-full h-full pointer-events-none z-0">
-          <svg
-            className="w-full h-full"
-            viewBox="0 0 1000 3000"
-            preserveAspectRatio="none"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* Guide line track with dashed ink line */}
-            <path
-              d={desktopOrthogonalPath}
-              stroke="#09090B"
-              strokeWidth="4"
-              strokeDasharray="8 8"
-              strokeOpacity="0.2"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              vectorEffect="non-scaling-stroke"
-            />
+        {/* Locked Node Feedback Toast */}
+        <AnimatePresence>
+          {lockedNotice && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-[#FF3333] text-white border-2 border-[#09090B] rounded-[12px] shadow-[4px_4px_0px_0px_#09090B] font-mono-brutal text-xs sm:text-sm font-bold flex items-center gap-3"
+            >
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span>{lockedNotice}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-            {/* Scroll-Linked Dynamic Solid 4px #09090B Animated Line */}
-            <motion.path
-              d={desktopOrthogonalPath}
-              stroke="#09090B"
-              strokeWidth="4"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              vectorEffect="non-scaling-stroke"
-              style={{ pathLength }}
-            />
+        {/* HUD Indicator: Floating Scroll & Progress Tracker */}
+        <aside aria-label="Timeline navigation status" className="fixed bottom-6 right-6 z-40 hidden md:flex items-center gap-3 bg-white border-2 border-[#09090B] rounded-[12px] p-2 shadow-[4px_4px_0px_0px_#09090B]">
+          <div className="px-3 py-1 bg-[#F8F4E8] border border-[#09090B] rounded-[6px] font-mono-brutal text-xs font-bold">
+            SCROLL: {scrollPercent}%
+          </div>
+          <div className="px-3 py-1 bg-[#D2E823] border border-[#09090B] rounded-[6px] font-mono-brutal text-xs font-bold text-[#09090B]">
+            {completedTopics.length} / 5 COMPLETE
+          </div>
+        </aside>
 
-            {/* Commit Junction Anchor Dots */}
-            {[
-              { cx: 500, cy: 40 },
-              { cx: 250, cy: 160 },
-              { cx: 250, cy: 420 },
-              { cx: 500, cy: 720 },
-              { cx: 750, cy: 720 },
-              { cx: 750, cy: 980 },
-              { cx: 500, cy: 1280 },
-              { cx: 250, cy: 1280 },
-              { cx: 250, cy: 1540 },
-              { cx: 500, cy: 1840 },
-              { cx: 750, cy: 1840 },
-              { cx: 750, cy: 2100 },
-              { cx: 500, cy: 2400 },
-              { cx: 250, cy: 2400 },
-              { cx: 250, cy: 2660 },
-              { cx: 500, cy: 2900 },
-            ].map((pt, idx) => (
-              <rect
-                key={idx}
-                x={pt.cx - 6}
-                y={pt.cy - 6}
-                width="12"
-                height="12"
-                fill="#09090B"
-                stroke="#D2E823"
-                strokeWidth="2"
+        {/* Vertical Timeline Container */}
+        <div ref={timelineContainerRef} className="relative min-h-[2200px] w-full py-12">
+          {/* ========================================================= */}
+          {/* THE JOURNEY LINE: Absolute SVG Orthogonal Path Behind Nodes */}
+          {/* ========================================================= */}
+          <div className="absolute inset-0 pointer-events-none z-0">
+            {/* Desktop SVG Line: 1000px coordinate system */}
+            <svg
+              className="w-full h-full hidden md:block"
+              viewBox="0 0 1000 2200"
+              fill="none"
+              preserveAspectRatio="none"
+            >
+              {/* Background Guide Line (Dotted / Muted) */}
+              <path
+                d="M 500,60 L 500,200 L 250,200 L 250,300 L 250,560 L 750,560 L 750,680 L 750,960 L 250,960 L 250,1080 L 250,1360 L 750,1360 L 750,1480 L 750,1760 L 500,1760 L 500,1880 L 500,2100"
+                stroke="#09090B"
+                strokeWidth="4"
+                strokeDasharray="8 8"
+                strokeOpacity="0.25"
+                strokeLinecap="square"
+                strokeLinejoin="miter"
               />
-            ))}
-          </svg>
-        </div>
 
-        {/* ======================================================= */}
-        {/* ORTHOGONAL SVG JOURNEY LINE (MOBILE) */}
-        {/* ======================================================= */}
-        <div className="block md:hidden absolute inset-0 w-full h-full pointer-events-none z-0">
-          <svg
-            className="w-full h-full"
-            viewBox="0 0 400 3000"
-            preserveAspectRatio="none"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d={mobileOrthogonalPath}
-              stroke="#09090B"
-              strokeWidth="4"
-              strokeDasharray="6 6"
-              strokeOpacity="0.2"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              vectorEffect="non-scaling-stroke"
-            />
-            <motion.path
-              d={mobileOrthogonalPath}
-              stroke="#09090B"
-              strokeWidth="4"
-              strokeLinecap="square"
-              strokeLinejoin="miter"
-              vectorEffect="non-scaling-stroke"
-              style={{ pathLength }}
-            />
-          </svg>
-        </div>
+              {/* Animated Journey Path (Solid 4px #09090B with pathLength binding) */}
+              <motion.path
+                d="M 500,60 L 500,200 L 250,200 L 250,300 L 250,560 L 750,560 L 750,680 L 750,960 L 250,960 L 250,1080 L 250,1360 L 750,1360 L 750,1480 L 750,1760 L 500,1760 L 500,1880 L 500,2100"
+                stroke="#09090B"
+                strokeWidth="4"
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                style={{ pathLength }}
+              />
 
-        {/* ======================================================= */}
-        {/* TIMELINE NODES (ZIGZAG ALTERNATING LAYOUT) */}
-        {/* ======================================================= */}
-        <div className="relative z-10 flex flex-col space-y-36 sm:space-y-48 mt-12">
-          {ORDERED_TOPIC_IDS.map((topicId, index) => {
-            const node = TOPICS_CONFIG[topicId];
-            const unlocked = isNodeUnlocked(topicId);
-            const completed = isNodeCompleted(topicId);
-            const isLeft = index % 2 === 0;
-            const isShaking = shakingNodeId === topicId;
+              {/* Branch Waypoint Junction Circles */}
+              <circle cx="500" cy="200" r="6" fill="#09090B" />
+              <circle cx="250" cy="200" r="6" fill="#09090B" />
+              <circle cx="250" cy="560" r="6" fill="#09090B" />
+              <circle cx="750" cy="560" r="6" fill="#09090B" />
+              <circle cx="750" cy="960" r="6" fill="#09090B" />
+              <circle cx="250" cy="960" r="6" fill="#09090B" />
+              <circle cx="250" cy="1360" r="6" fill="#09090B" />
+              <circle cx="750" cy="1360" r="6" fill="#09090B" />
+              <circle cx="750" cy="1760" r="6" fill="#09090B" />
+              <circle cx="500" cy="1760" r="6" fill="#09090B" />
+            </svg>
 
-            return (
-              <div
-                key={node.id}
-                className={`w-full flex flex-col md:flex-row items-center ${
-                  isLeft ? 'md:justify-start' : 'md:justify-end'
-                }`}
-              >
-                {/* Topic Tab / Node Card */}
-                <div
-                  className={`w-full max-w-lg ${
-                    isLeft ? 'md:mr-auto md:pl-0' : 'md:ml-auto md:pr-0'
-                  }`}
-                >
-                  <motion.div
-                    // Jagged shake animation on locked click: rapid linear x oscillations, zero soft bounce
-                    animate={
-                      isShaking
-                        ? {
-                            x: [-6, 6, -6, 6, -3, 3, 0],
-                            transition: { duration: 0.25, ease: 'linear' },
-                          }
-                        : { x: 0 }
-                    }
-                    onClick={() => {
-                      if (!unlocked) {
-                        handleLockedClick(node.id, node.requires);
-                      } else {
-                        router.push(`/topic/${node.id}`);
-                      }
-                    }}
-                    className={`relative p-6 sm:p-7 rounded-[12px] border-2 border-[#09090B] transition-all duration-150 cursor-pointer select-none ${
-                      unlocked
-                        ? 'bg-[#D2E823] text-[#09090B] shadow-[4px_4px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#09090B]'
-                        : 'bg-[#F8F4E8] text-[#09090B] opacity-60 grayscale shadow-[4px_4px_0px_0px_#09090B] hover:opacity-75'
-                    }`}
-                  >
-                    {/* Header Strip */}
-                    <div className="flex items-center justify-between border-b-2 border-[#09090B]/20 pb-3 mb-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono-brutal font-bold text-[11px] uppercase bg-[#09090B] text-white px-2.5 py-1 rounded-[4px]">
-                          {node.stage}
-                        </span>
-                        <span className="font-mono-brutal text-xs font-bold text-[#09090B]">
-                          {node.badge}
-                        </span>
-                      </div>
+            {/* Mobile SVG Line: Simple Straight Spine */}
+            <svg
+              className="w-full h-full block md:hidden"
+              viewBox="0 0 100 2200"
+              fill="none"
+              preserveAspectRatio="none"
+            >
+              <line
+                x1="24"
+                y1="40"
+                x2="24"
+                y2="2160"
+                stroke="#09090B"
+                strokeWidth="3"
+                strokeDasharray="6 6"
+                strokeOpacity="0.3"
+              />
+              <motion.line
+                x1="24"
+                y1="40"
+                x2="24"
+                y2="2160"
+                stroke="#09090B"
+                strokeWidth="3"
+                style={{ pathLength }}
+              />
+            </svg>
+          </div>
 
-                      {/* State Badge */}
-                      <div>
-                        {completed && (
-                          <span className="flex items-center gap-1.5 text-xs font-mono-brutal font-bold bg-white text-[#09090B] px-2.5 py-1 rounded-[4px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B]">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#09090B]" />
-                            <span>DONE</span>
-                          </span>
-                        )}
-                        {!completed && unlocked && (
-                          <span className="flex items-center gap-1.5 text-xs font-mono-brutal font-bold bg-white text-[#09090B] px-2.5 py-1 rounded-[4px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B]">
-                            <Zap className="w-3.5 h-3.5 text-[#09090B] animate-pulse" />
-                            <span>ACTIVE</span>
-                          </span>
-                        )}
-                        {!unlocked && (
-                          <span className="flex items-center gap-1.5 text-xs font-mono-brutal font-bold bg-zinc-300 text-zinc-900 px-2.5 py-1 rounded-[4px] border-2 border-[#09090B]">
-                            <Lock className="w-3.5 h-3.5" />
-                            <span>LOCKED</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Node Heading */}
-                    <div className="space-y-1 mb-3">
-                      <div className="flex items-center gap-2 font-mono-brutal text-[11px] font-bold text-[#09090B]/70">
-                        <GitBranch className="w-3 h-3" />
-                        <span>branch: {node.branch}</span>
-                      </div>
-                      <h3 className="font-heading text-2xl sm:text-3xl text-[#09090B] tracking-tight">
-                        {node.title}
-                      </h3>
-                      <p className="font-mono-brutal text-xs font-bold text-[#09090B]">
-                        // {node.tagline}
-                      </p>
-                    </div>
-
-                    {/* Mission Description */}
-                    <p className="text-xs sm:text-sm text-[#09090B]/90 font-medium leading-relaxed mb-5">
-                      {node.description}
-                    </p>
-
-                    {/* Terminal Commands Snippet */}
-                    <div className="bg-[#09090B] text-[#D2E823] p-3 rounded-[8px] border-2 border-[#09090B] font-mono-brutal text-xs space-y-1 mb-5">
-                      <div className="flex items-center gap-1 text-[10px] text-zinc-400 uppercase font-bold border-b border-zinc-800 pb-1 mb-1">
-                        <Terminal className="w-3 h-3" />
-                        <span>Target Terminal Commands</span>
-                      </div>
-                      {node.commands.map((cmd, cIdx) => (
-                        <div key={cIdx} className="flex items-center gap-1.5">
-                          <span className="text-[#D2E823] select-none">$</span>
-                          <span className="font-bold">{cmd}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Bottom Action Footer */}
-                    <div className="flex items-center justify-between pt-4 border-t-2 border-[#09090B]/20">
-                      <span className="font-mono-brutal text-xs font-bold text-[#09090B]">
-                        REWARD: +{node.xp} XP
-                      </span>
-
-                      {/* Action buttons */}
-                      {unlocked && (
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/topic/${node.id}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="px-3 py-1.5 bg-white text-[#09090B] hover:bg-[#09090B] hover:text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[6px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1 cursor-pointer"
-                            title="Enter theory and interactive terminal sandbox"
-                          >
-                            <span>SANDBOX</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </Link>
-
-                          {!completed && (
-                            <button
-                              type="button"
-                              onClick={(e) => handleMarkAsDone(e, node.id)}
-                              disabled={isUpdatingDb}
-                              className="px-3 py-1.5 bg-[#09090B] text-[#D2E823] font-heading text-xs tracking-tight rounded-[6px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer flex items-center gap-1"
-                              title="Complete this milestone and unlock subsequent timeline stage"
-                            >
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                              <span>DONE</span>
-                            </button>
-                          )}
-
-                          {completed && (
-                            <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#D2E823] border border-[#09090B] rounded-[6px] font-mono-brutal text-[10px] font-bold text-[#09090B]">
-                              <Sparkles className="w-3 h-3" />
-                              <span>DONE</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {!unlocked && (
-                        <span className="font-mono-brutal text-[11px] text-zinc-700 font-bold">
-                          CLICK TO CHECK LOCK
-                        </span>
-                      )}
-                    </div>
-                  </motion.div>
-                </div>
+          {/* ========================================================= */}
+          {/* TIMELINE NODES (Alternating Zigzag Layout) */}
+          {/* ========================================================= */}
+          <div className="relative z-10 flex flex-col justify-between h-full space-y-24 md:space-y-36">
+            {/* Top Root Anchor */}
+            <div className="flex justify-center mb-4">
+              <div className="px-4 py-1.5 bg-[#09090B] text-[#D2E823] font-mono-brutal text-xs font-bold rounded-full border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#D2E823] animate-ping" />
+                <span>GENESIS TRUNK: refs/heads/main</span>
               </div>
-            );
-          })}
+            </div>
 
-          {/* Timeline Finale / Champion Milestone */}
-          <div className="w-full flex justify-center pt-8">
-            <div className="w-full max-w-md bg-white border-2 border-[#09090B] rounded-[16px] p-6 sm:p-8 text-center shadow-[6px_6px_0px_0px_#09090B] space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-[12px] bg-[#D2E823] border-2 border-[#09090B] shadow-[4px_4px_0px_0px_#09090B] flex items-center justify-center">
-                <Flame className="w-8 h-8 text-[#09090B]" />
-              </div>
-              <div className="space-y-1">
-                <span className="font-mono-brutal text-xs font-bold uppercase bg-[#09090B] text-white px-3 py-1 rounded-full">
-                  TIMELINE DESTINATION
+            {/* STAGE 01: INIT (Left on desktop) */}
+            <TimelineNodeItem
+              index={0}
+              topic={TOPICS_CONFIG.init}
+              isUnlocked={isNodeUnlocked('init')}
+              isCompleted={isNodeCompleted('init')}
+              isShaking={shakingNodeId === 'init'}
+              onLockedClick={() => handleLockedClick('init', TOPICS_CONFIG.init.requires)}
+              onInspect={() => setSelectedQuest(getQuestData('init'))}
+              onMarkDone={(e) => handleMarkAsDone(e, 'init')}
+              alignment="left"
+            />
+
+            {/* STAGE 02: COMMIT (Right on desktop) */}
+            <TimelineNodeItem
+              index={1}
+              topic={TOPICS_CONFIG.commit}
+              isUnlocked={isNodeUnlocked('commit')}
+              isCompleted={isNodeCompleted('commit')}
+              isShaking={shakingNodeId === 'commit'}
+              onLockedClick={() => handleLockedClick('commit', TOPICS_CONFIG.commit.requires)}
+              onInspect={() => setSelectedQuest(getQuestData('commit'))}
+              onMarkDone={(e) => handleMarkAsDone(e, 'commit')}
+              alignment="right"
+            />
+
+            {/* STAGE 03: BRANCHING (Left on desktop) */}
+            <TimelineNodeItem
+              index={2}
+              topic={TOPICS_CONFIG.branching}
+              isUnlocked={isNodeUnlocked('branching')}
+              isCompleted={isNodeCompleted('branching')}
+              isShaking={shakingNodeId === 'branching'}
+              onLockedClick={() => handleLockedClick('branching', TOPICS_CONFIG.branching.requires)}
+              onInspect={() => setSelectedQuest(getQuestData('branching'))}
+              onMarkDone={(e) => handleMarkAsDone(e, 'branching')}
+              alignment="left"
+            />
+
+            {/* STAGE 04: MERGING (Right on desktop) */}
+            <TimelineNodeItem
+              index={3}
+              topic={TOPICS_CONFIG.merging}
+              isUnlocked={isNodeUnlocked('merging')}
+              isCompleted={isNodeCompleted('merging')}
+              isShaking={shakingNodeId === 'merging'}
+              onLockedClick={() => handleLockedClick('merging', TOPICS_CONFIG.merging.requires)}
+              onInspect={() => setSelectedQuest(getQuestData('merging'))}
+              onMarkDone={(e) => handleMarkAsDone(e, 'merging')}
+              alignment="right"
+            />
+
+            {/* STAGE 05: CONFLICTS (Center / Final Apex on desktop) */}
+            <TimelineNodeItem
+              index={4}
+              topic={TOPICS_CONFIG.conflicts}
+              isUnlocked={isNodeUnlocked('conflicts')}
+              isCompleted={isNodeCompleted('conflicts')}
+              isShaking={shakingNodeId === 'conflicts'}
+              onLockedClick={() => handleLockedClick('conflicts', TOPICS_CONFIG.conflicts.requires)}
+              onInspect={() => setSelectedQuest(getQuestData('conflicts'))}
+              onMarkDone={(e) => handleMarkAsDone(e, 'conflicts')}
+              alignment="center"
+            />
+
+            {/* Bottom Apex Terminus */}
+            <div className="flex justify-center pt-8">
+              <div className="p-6 bg-white border-2 border-[#09090B] rounded-[16px] shadow-[6px_6px_0px_0px_#09090B] max-w-md text-center">
+                <span className="font-mono-brutal text-xs font-bold text-[#09090B]/60 uppercase tracking-widest block mb-2">
+                  TIMELINE TERMINUS
                 </span>
-                <h2 className="font-heading text-2xl sm:text-3xl text-[#09090B]">
-                  GIT CHAMPION
-                </h2>
-                <p className="text-xs text-[#09090B]/80 font-medium">
-                  Complete all 5 stages to master Git version control, branch isolation, merge conflict resolution, and Directed Acyclic Graphs.
+                <h4 className="font-heading text-xl sm:text-2xl text-[#09090B] mb-2 tracking-tight">
+                  {completedTopics.length === 5 ? 'GIT ARCHITECT CERTIFIED' : 'THE JOURNEY CONTINUES'}
+                </h4>
+                <p className="text-xs text-[#09090B]/70 font-medium mb-4">
+                  {completedTopics.length === 5
+                    ? 'All 5 timeline nodes synthesized cleanly into trunk. You have mastered local Git.'
+                    : `Complete all nodes to unlock advanced Git Crucible modules (${completedTopics.length}/5 done).`}
                 </p>
-              </div>
-
-              <div className="pt-2">
-                <span className="inline-block font-mono-brutal text-xs font-bold text-[#09090B] bg-[#D2E823] px-3 py-1.5 rounded-[6px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B]">
-                  {completedCount === 5 ? '★ ALL MILESTONES SECURED ★' : `${5 - completedCount} STAGES REMAINING`}
-                </span>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#09090B] text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer"
+                >
+                  <span>RETURN TO HOME</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </main>
 
-      {/* Interactive Quest Modal */}
-      <QuestModal quest={selectedQuest} onClose={() => setSelectedQuest(null)} />
+      {/* Quest Modal for Topic Details */}
+      <QuestModal
+        quest={selectedQuest}
+        isOpen={!!selectedQuest}
+        onClose={() => setSelectedQuest(null)}
+        onLaunchTopic={(id) => {
+          setSelectedQuest(null);
+          router.push(`/topic/${id}`);
+        }}
+      />
+    </div>
+  );
+}
+
+// =================================================================
+// Subcomponent: TimelineNodeItem
+// Neo-Brutalist Box with Sharp Jagged Shake Animation on Locked Click
+// =================================================================
+interface TimelineNodeItemProps {
+  index: number;
+  topic: TopicNodeConfig;
+  isUnlocked: boolean;
+  isCompleted: boolean;
+  isShaking: boolean;
+  onLockedClick: () => void;
+  onInspect: () => void;
+  onMarkDone: (e: React.MouseEvent) => void;
+  alignment: 'left' | 'right' | 'center';
+}
+
+function TimelineNodeItem({
+  index,
+  topic,
+  isUnlocked,
+  isCompleted,
+  isShaking,
+  onLockedClick,
+  onInspect,
+  onMarkDone,
+  alignment,
+}: TimelineNodeItemProps) {
+  const router = useRouter();
+
+  // Determine horizontal placement for zigzag layout
+  const justifyClass =
+    alignment === 'left'
+      ? 'md:justify-start md:pl-8'
+      : alignment === 'right'
+      ? 'md:justify-end md:pr-8'
+      : 'md:justify-center';
+
+  // Jagged shake keyframes (sharp horizontal steps, no soft bounce)
+  const shakeAnimation = isShaking
+    ? {
+        x: [-6, 6, -6, 6, -3, 3, 0],
+        transition: { duration: 0.25, ease: 'linear' },
+      }
+    : { x: 0 };
+
+  return (
+    <div className={`w-full flex justify-start pl-8 md:pl-0 ${justifyClass}`}>
+      <motion.div
+        animate={shakeAnimation}
+        className={`relative w-full max-w-sm sm:max-w-md ${
+          isUnlocked ? 'cursor-pointer' : 'cursor-not-allowed'
+        }`}
+        onClick={() => {
+          if (!isUnlocked) {
+            onLockedClick();
+          } else {
+            onInspect();
+          }
+        }}
+      >
+        {/* Node Brutalist Card Container */}
+        <div
+          className={`relative border-2 border-[#09090B] rounded-[16px] p-5 sm:p-6 transition-all select-none ${
+            isUnlocked
+              ? isCompleted
+                ? 'bg-[#D2E823] text-[#09090B] shadow-[6px_6px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_0px_#09090B]'
+                : 'bg-[#F8F4E8] text-[#09090B] shadow-[6px_6px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_0px_#09090B]'
+              : 'bg-[#F8F4E8]/60 text-[#09090B]/60 grayscale opacity-60 shadow-[3px_3px_0px_0px_#09090B]'
+          }`}
+        >
+          {/* Top Status & Stage Badge */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <span
+                className={`font-mono-brutal text-[11px] font-bold px-2 py-0.5 rounded border border-[#09090B] shadow-[1px_1px_0px_0px_#09090B] ${
+                  isUnlocked
+                    ? isCompleted
+                      ? 'bg-white text-[#09090B]'
+                      : 'bg-[#D2E823] text-[#09090B]'
+                    : 'bg-white text-[#09090B]/50'
+                }`}
+              >
+                {topic.stage}
+              </span>
+              <span className="font-mono-brutal text-[11px] font-bold text-[#09090B]/60">
+                {topic.xp} XP
+              </span>
+            </div>
+
+            {/* Lock / Completed Status Icon */}
+            <div>
+              {isCompleted ? (
+                <span className="inline-flex items-center gap-1 font-mono-brutal text-[10px] font-bold uppercase bg-[#09090B] text-[#D2E823] px-2 py-0.5 rounded border border-[#09090B]">
+                  <Check className="w-3 h-3" />
+                  <span>DONE</span>
+                </span>
+              ) : isUnlocked ? (
+                <span className="inline-flex items-center gap-1 font-mono-brutal text-[10px] font-bold uppercase bg-white text-[#09090B] px-2 py-0.5 rounded border border-[#09090B] shadow-[1px_1px_0px_0px_#09090B]">
+                  <Zap className="w-3 h-3 text-[#09090B]" />
+                  <span>ACTIVE</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 font-mono-brutal text-[10px] font-bold uppercase bg-[#09090B]/10 text-[#09090B] px-2 py-0.5 rounded border border-[#09090B]/40">
+                  <Lock className="w-3 h-3" />
+                  <span>LOCKED</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Title & Tagline */}
+          <h3 className="font-heading text-2xl sm:text-3xl text-[#09090B] tracking-tighter leading-none mb-1">
+            {topic.title}
+          </h3>
+          <p className="font-mono-brutal text-xs font-bold text-[#09090B]/70 uppercase tracking-tight mb-3">
+            // {topic.tagline}
+          </p>
+
+          <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed mb-5 line-clamp-2">
+            {topic.description}
+          </p>
+
+          {/* Interactive Button Group */}
+          <div className="flex items-center gap-2 pt-2 border-t-2 border-[#09090B]/15">
+            {isUnlocked ? (
+              <>
+                <Link
+                  href={`/topic/${topic.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-1 py-2 px-3 bg-[#09090B] hover:bg-[#D2E823] hover:text-[#09090B] text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                >
+                  <Terminal className="w-3.5 h-3.5" />
+                  <span>ENTER QUEST</span>
+                </Link>
+
+                {!isCompleted && (
+                  <button
+                    onClick={onMarkDone}
+                    className="py-2 px-3 bg-white hover:bg-[#D2E823] text-[#09090B] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    title="Mark stage completed"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">DONE</span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLockedClick();
+                }}
+                className="w-full py-2 px-3 bg-[#09090B]/10 text-[#09090B]/70 font-mono-brutal text-xs font-bold uppercase rounded-[8px] border border-[#09090B]/40 flex items-center justify-center gap-2 cursor-not-allowed"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>PREREQUISITE REQUIRED</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

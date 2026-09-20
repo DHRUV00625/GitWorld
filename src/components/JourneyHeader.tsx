@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Zap, Trophy, LogOut } from 'lucide-react';
+import { ArrowLeft, Trophy, LogOut } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { logoutUser } from '@/store/useGitStore';
 
 interface JourneyHeaderProps {
   userEmail?: string | null;
@@ -16,8 +17,7 @@ export default function JourneyHeader({ userEmail, xp = 250, level = 2 }: Journe
   const supabase = createClient();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
+    await logoutUser(supabase, router);
   };
 
   return (
@@ -60,19 +60,22 @@ export default function JourneyHeader({ userEmail, xp = 250, level = 2 }: Journe
               </span>
               <button
                 onClick={handleSignOut}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#09090B] text-[#D2E823] font-heading text-xs rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1.5 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF3333] hover:bg-[#ff4d4d] text-white border-2 border-[#09090B] rounded-[8px] font-heading text-xs uppercase shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer"
+                title="Sign Out"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">EXIT</span>
+                <span className="hidden sm:inline">SIGN OUT</span>
               </button>
             </div>
           ) : (
-            <Link
-              href="/"
-              className="px-4 py-1.5 sm:py-2 bg-[#09090B] text-[#D2E823] font-heading text-xs rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer"
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#FF3333] hover:text-white text-[#09090B] border-2 border-[#09090B] rounded-[8px] font-heading text-xs uppercase shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer"
+              title="Sign Out"
             >
-              SIGN IN
-            </Link>
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">SIGN OUT</span>
+            </button>
           )}
         </div>
       </div>

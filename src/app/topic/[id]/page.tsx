@@ -58,11 +58,11 @@ const TOPIC_REGISTRY: Record<string, TopicMeta> = {
       whatItIs:
         'The `git init` command creates a brand new Git repository or reinitializes an existing one. It constructs the hidden `.git` folder that houses all objects, configuration, and pointer heads.',
       whyWeNeedIt:
-        'Without repository initialization, version control cannot track delta history. Git needs a dedicated metadata database to record your commits, branches, and cryptographic hashes.',
+        'Without repository initialization, directory files are unversioned snapshots. Git cannot track changes, compute cryptographic diffs, or isolate timeline commits.',
       howItWorks:
-        'Git allocates a `.git/` directory containing the `objects/` hash database, `refs/` directory for branch pointers, and a `HEAD` file referencing `refs/heads/main`.',
+        'Git allocates a local database inside `.git/` with subdirectories `objects/`, `refs/`, `HEAD`, and `config`. It sets the initial default branch to `main`.',
       theSolution:
-        'Run `git init <name>` to spawn your repository folder and establish your genesis block. This sets the foundation for all subsequent commits.',
+        'Initialize the workspace by executing `git init <repo-name>` to create your versioned project universe.',
     },
     nextTopicId: 'commit',
     nextTopicTitle: '02. COMMIT',
@@ -73,17 +73,17 @@ const TOPIC_REGISTRY: Record<string, TopicMeta> = {
     stageName: 'COMMIT',
     title: 'IMMUTABLE SNAPSHOTS',
     xp: 150,
-    expectedPattern: /^git\s+(?:add\s+.*&&.*)?commit(?:\s+-m\s+["'](.+?)["']|\s+.*)?$/,
-    hint: 'git commit -m "feat: genesis snapshot"',
+    expectedPattern: /^git\s+commit(?:\s+.*)?$/,
+    hint: 'git commit -m "feat: initial commit"',
     theory: {
       whatItIs:
-        'A Git commit is an immutable cryptographic snapshot of your project at a specific instant in time. Each commit records an author, timestamp, parent pointer, and SHA-1/SHA-256 tree hash.',
+        'A commit is an immutable cryptographic snapshot of staged changes. It captures the exact state of files, authorship metadata, timestamp, and a parent commit hash pointer.',
       whyWeNeedIt:
-        'Commits give you an irreversible history audit trail. Unlike standard file saving, Git commits allow you to rewind, compare diffs, and inspect parent lineage across the Directed Acyclic Graph.',
+        'Commits generate a verifiable audit trail. Unlike saving over files in place, every commit forms a permanent checkpoint in a Directed Acyclic Graph (DAG) that can be inspected forever.',
       howItWorks:
-        'Files are staged into the Index cache, then compressed into immutable blob and tree objects. A commit object is created with a unique 40-character hash pointing to the tree.',
+        'Git takes tree snapshots from the Staging Index (Index file), serializes blobs, computes the SHA-1 tree object, and writes a commit object pointing to its parent SHA.',
       theSolution:
-        'Stage your modifications and execute `git commit -m "<message>"` to seal an immutable record into the repository history.',
+        'Stage files via `git add .` and seal them into the history ledger with `git commit -m "message"`.',
     },
     nextTopicId: 'branching',
     nextTopicTitle: '03. BRANCHING',
@@ -92,19 +92,19 @@ const TOPIC_REGISTRY: Record<string, TopicMeta> = {
     id: 'branching',
     stageNum: 'STAGE 03',
     stageName: 'BRANCHING',
-    title: 'PARALLEL TIMELINES',
+    title: 'PARALLEL UNIVERSES',
     xp: 200,
-    expectedPattern: /^git\s+(?:checkout\s+-b|switch\s+-c|branch)\s+([a-zA-Z0-9_\-\.\/]+)$/,
+    expectedPattern: /^git\s+(?:checkout\s+-b|switch\s+-c|branch)(?:\s+([a-zA-Z0-9_\-\.\/]+))?$/,
     hint: 'git checkout -b feature/quantum-leap',
     theory: {
       whatItIs:
-        'A Git branch is a movable 41-byte pointer referencing a specific commit in the DAG. It enables teams to construct isolated features without disturbing the production trunk.',
+        'A Git branch is a lightweight movable pointer to a specific commit. Spawning a new branch diverges your commit trajectory without altering existing stable code.',
       whyWeNeedIt:
-        'Branches prevent untested code from polluting stable releases. They allow multiple engineers to work on divergent features in complete isolation simultaneously.',
+        'Branching empowers isolated feature development, experimental prototyping, and bug repairs without polluting or endangering the primary production line (`main`).',
       howItWorks:
-        'Creating a branch does not copy files. It simply creates a new reference file under `.git/refs/heads/` that advances automatically whenever new commits are forged.',
+        'Git creates a 41-byte text reference inside `.git/refs/heads/<branch>` containing the latest commit hash, then updates `.git/HEAD` to point to the new ref.',
       theSolution:
-        'Use `git checkout -b <branchName>` to simultaneously spawn a new timeline pointer and switch your HEAD focus to that track.',
+        'Create and switch onto an isolated track using `git checkout -b feature/<name>` or `git switch -c feature/<name>`.',
     },
     nextTopicId: 'merging',
     nextTopicTitle: '04. MERGING',
@@ -164,14 +164,10 @@ function levenshteinDistance(a: string, b: string): number {
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      if (a[i - 1].toLowerCase() === b[j - 1].toLowerCase()) {
+      if (a[i - 1] === b[j - 1]) {
         dp[i][j] = dp[i - 1][j - 1];
       } else {
-        dp[i][j] = Math.min(
-          dp[i - 1][j] + 1,
-          dp[i][j - 1] + 1,
-          dp[i - 1][j - 1] + 1
-        );
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
       }
     }
   }
@@ -190,11 +186,11 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
   if (!trimmed) {
     return {
       isValid: false,
-      errorMessage: `> SYNTAX FAULT: Empty command buffer. Try typing '${topic.hint}'.`,
+      errorMessage: '> SYNTAX FAULT: Empty command received. Type a valid Git expression.',
     };
   }
 
-  // 1. Check direct regex match
+  // 1. Direct Regex Match check
   const match = trimmed.match(topic.expectedPattern);
   if (match) {
     return {
@@ -281,7 +277,7 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
       if (tokens.length === 2) {
         return {
           isValid: false,
-          errorMessage: `> SYNTAX FAULT: Missing '-c' flag and branch name. Use 'git switch -c <branch-name>'.`,
+          errorMessage: `> SYNTAX FAULT: Missing '-c' flag and branch name. To create and switch to a new branch, use 'git switch -c <branch-name>'.`,
         };
       }
       if (tokens[2] !== '-c') {
@@ -298,7 +294,7 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
       }
     }
 
-    // Branch flags check
+    // Branch flags/args check
     if (secondWord === 'branch') {
       if (tokens.length === 2) {
         return {
@@ -315,10 +311,10 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
         errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git init'? Try again.`,
       };
     }
-    if (['branch', 'checkout', 'commit', 'merge', 'push', 'pull', 'status'].includes(secondWord)) {
+    if (secondWord !== 'init') {
       return {
         isValid: false,
-        errorMessage: `> SYNTAX FAULT: Sub-command '${tokens[1]}' is unexpected for repository initialization. Use 'git init <repo-name>'.`,
+        errorMessage: `> SYNTAX FAULT: Expected 'git init [repo-name]'. You typed 'git ${tokens[1]}'. Did you mean '${topic.hint}'?`,
       };
     }
   } else if (topic.id === 'commit') {
@@ -329,19 +325,11 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
         errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git commit'? Try again.`,
       };
     }
-    if (secondWord === 'commit') {
-      if (!trimmed.includes('-m')) {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: Missing '-m' flag for commit message. Format: git commit -m "<message>".`,
-        };
-      }
-      if (!trimmed.includes('"') && !trimmed.includes("'")) {
-        return {
-          isValid: false,
-          errorMessage: `> SYNTAX FAULT: Commit message must be enclosed in quotes: git commit -m "feat: your message".`,
-        };
-      }
+    if (secondWord !== 'commit') {
+      return {
+        isValid: false,
+        errorMessage: `> SYNTAX FAULT: Expected 'git commit -m "..."'. You typed 'git ${tokens[1]}'. Try '${topic.hint}'.`,
+      };
     }
   } else if (topic.id === 'merging') {
     const dist = levenshteinDistance(secondWord, 'merge');
@@ -536,15 +524,20 @@ export default function TopicPage() {
           JSON.stringify({ completed_topics: nextCompleted, xp: nextXp })
         );
 
+        useGitStore.getState().addCompletedTopic(topic.id);
+
         if (authData?.user) {
           await supabase.from('user_progress').upsert(
             {
+              id: authData.user.id,
               user_id: authData.user.id,
               completed_topics: nextCompleted,
               xp: nextXp,
+              repo_name: updatedRepo || useGitStore.getState().repoName || '',
+              current_branch_name: useGitStore.getState().currentBranch || 'main',
               updated_at: new Date().toISOString(),
             },
-            { onConflict: 'user_id' }
+            { onConflict: 'id' }
           );
         }
       }
@@ -558,387 +551,284 @@ export default function TopicPage() {
       <NoiseOverlay />
       <CustomCursor />
 
-      {/* ========================================================= */}
-      {/* TOP HEADER: STICKY NAV */}
-      {/* ========================================================= */}
+      {/* Sticky Header */}
       <header className="sticky top-4 z-40 px-4 sm:px-8 max-w-7xl mx-auto w-full">
         <div className="w-full h-16 sm:h-20 bg-[#F8F4E8]/90 backdrop-blur-[24px] border-2 border-[#09090B] rounded-[12px] px-4 sm:px-8 flex items-center justify-between shadow-[4px_4px_0px_0px_#09090B]">
-          {/* Left: Back Button & Title */}
           <div className="flex items-center gap-3 sm:gap-4">
             <Link
               href="/journey"
-              className="px-3 py-2 bg-white hover:bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-[8px] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-2 font-mono-brutal text-xs font-bold cursor-pointer"
-              title="Return to Journey Timeline"
+              className="p-2 sm:p-2.5 bg-white hover:bg-[#D2E823] border-2 border-[#09090B] rounded-[8px] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer flex items-center justify-center"
+              title="Return to Journey Curriculum"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">BACK TO JOURNEY</span>
+              <ArrowLeft className="w-4 h-4 text-[#09090B]" />
             </Link>
 
             <div className="flex items-center gap-2">
-              <span className="font-heading text-lg sm:text-2xl text-[#09090B] tracking-tighter">
+              <Link href="/journey" className="font-heading text-lg sm:text-2xl text-[#09090B] tracking-tighter hover:opacity-80 transition-opacity">
                 GITWORLD
-              </span>
-              <span className="font-mono-brutal font-bold text-xs text-[#09090B]/40 hidden sm:inline">
-                //
-              </span>
-              <span className="font-mono-brutal font-bold text-xs uppercase bg-[#D2E823] text-[#09090B] px-2.5 py-1 border border-[#09090B] rounded shadow-[2px_2px_0px_0px_#09090B]">
+              </Link>
+              <span className="font-mono-brutal font-bold text-xs text-[#09090B]/40 hidden sm:inline">//</span>
+              <span className="font-mono-brutal font-bold text-xs uppercase text-[#09090B] bg-[#D2E823] px-2 py-0.5 border border-[#09090B] rounded shadow-[2px_2px_0px_0px_#09090B] hidden sm:inline-block">
                 {topic.stageNum}: {topic.stageName}
               </span>
             </div>
           </div>
 
-          {/* Right: Active Repo / Branch Indicator */}
-          <div className="flex items-center gap-2 font-mono-brutal text-xs font-bold">
-            <div className="hidden md:flex items-center gap-2 bg-white border-2 border-[#09090B] px-3 py-1.5 rounded-[8px] shadow-[2px_2px_0px_0px_#09090B]">
-              <Folder className="w-3.5 h-3.5 text-[#09090B]" />
-              <span className="text-[#09090B]">
-                repo: {repoName ? repoName : '(uninitialized)'}
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 bg-white border-2 border-[#09090B] rounded-[8px] px-3 py-1.5 shadow-[2px_2px_0px_0px_#09090B]">
+              <GitBranch className="w-3.5 h-3.5 text-[#09090B]" />
+              <span className="font-mono-brutal text-xs font-bold text-[#09090B]">
+                {currentBranch}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 bg-[#09090B] text-[#D2E823] border-2 border-[#09090B] px-3 py-1.5 rounded-[8px] shadow-[2px_2px_0px_0px_#09090B]">
-              <GitBranch className="w-3.5 h-3.5 text-[#D2E823]" />
-              <span>{currentBranch}</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-[8px] font-mono-brutal text-xs font-bold shadow-[2px_2px_0px_0px_#09090B]">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>+{topic.xp} XP</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* ========================================================= */}
-      {/* 12-COLUMN SPLIT VIEW LAYOUT */}
-      {/* ========================================================= */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-8 w-full">
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 pt-8 sm:pt-12 relative z-10">
+        {/* Topic Title Header */}
+        <div className="mb-8 border-b-2 border-[#09090B] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="inline-block px-3 py-1 bg-white text-[#09090B] border-2 border-[#09090B] rounded-full text-xs font-mono-brutal font-bold uppercase tracking-wider mb-2 shadow-[2px_2px_0px_0px_#09090B]">
+              {topic.stageNum} // MISSION
+            </div>
+            <h1 className="font-heading text-3xl sm:text-5xl text-[#09090B] tracking-tighter">
+              {topic.title}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="font-mono-brutal text-xs font-bold bg-[#F8F4E8] border border-[#09090B] px-3 py-1.5 rounded-[8px]">
+              REPO: ~/{simulatedRepoName}
+            </span>
+          </div>
+        </div>
+
+        {/* 2-Column Split: Theory (Left) & Sandbox Terminal (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* ======================================================= */}
-          {/* LEFT SIDE: THEORY BENTO GRID (5 Columns) */}
-          {/* ======================================================= */}
-          <div className="lg:col-span-5 space-y-5">
-            {/* Mission Overview Badge Box */}
-            <div className="bg-white border-2 border-[#09090B] rounded-[16px] p-6 shadow-[4px_4px_0px_0px_#09090B]">
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-[#D2E823] text-[#09090B] font-mono-brutal font-bold text-[10px] uppercase border border-[#09090B] rounded-full mb-2">
-                <Shield className="w-3 h-3" />
-                <span>THEORY BRIEFING // +{topic.xp} XP</span>
-              </div>
-              <h2 className="font-heading text-2xl sm:text-3xl text-[#09090B] tracking-tight">
-                {topic.title}
-              </h2>
-              <p className="text-xs sm:text-sm text-[#09090B]/80 font-medium mt-2 leading-relaxed">
-                Read the theoretical breakdown below, then switch to the Sandbox terminal on the right to forge the required command.
-              </p>
-            </div>
-
-            {/* Bento Card 1: WHAT IT IS */}
-            <div className="bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] p-5 shadow-[4px_4px_0px_0px_#09090B]">
-              <div className="flex items-center gap-2 border-b-2 border-[#09090B]/20 pb-2 mb-3">
-                <span className="w-2.5 h-2.5 bg-[#09090B] rounded-full" />
-                <h3 className="font-heading text-base sm:text-lg text-[#09090B]">
-                  WHAT IT IS
+          {/* Left Column: Deep Git Theory (5 Cols) */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="bg-white border-2 border-[#09090B] rounded-[20px] p-6 shadow-[6px_6px_0px_0px_#09090B] space-y-5">
+              <div className="flex items-center gap-2 border-b-2 border-[#09090B] pb-3">
+                <FileCode className="w-5 h-5 text-[#09090B]" />
+                <h3 className="font-heading text-lg text-[#09090B] tracking-tight">
+                  THEORY // CORE CONCEPTS
                 </h3>
               </div>
-              <p className="text-xs sm:text-sm text-[#09090B]/90 font-medium leading-relaxed">
-                {topic.theory.whatItIs}
-              </p>
-            </div>
 
-            {/* Bento Card 2: WHY WE NEED IT */}
-            <div className="bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] p-5 shadow-[4px_4px_0px_0px_#09090B]">
-              <div className="flex items-center gap-2 border-b-2 border-[#09090B]/20 pb-2 mb-3">
-                <span className="w-2.5 h-2.5 bg-[#D2E823] border border-[#09090B] rounded-full" />
-                <h3 className="font-heading text-base sm:text-lg text-[#09090B]">
-                  WHY WE NEED IT
-                </h3>
+              {/* 1. What it is */}
+              <div>
+                <h4 className="font-mono-brutal text-xs font-bold uppercase text-[#09090B] bg-[#D2E823] px-2 py-0.5 border border-[#09090B] rounded inline-block mb-1.5 shadow-[1px_1px_0px_0px_#09090B]">
+                  01. WHAT IT IS
+                </h4>
+                <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed">
+                  {topic.theory.whatItIs}
+                </p>
               </div>
-              <p className="text-xs sm:text-sm text-[#09090B]/90 font-medium leading-relaxed">
-                {topic.theory.whyWeNeedIt}
-              </p>
-            </div>
 
-            {/* Bento Card 3: HOW IT WORKS */}
-            <div className="bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] p-5 shadow-[4px_4px_0px_0px_#09090B]">
-              <div className="flex items-center gap-2 border-b-2 border-[#09090B]/20 pb-2 mb-3">
-                <span className="w-2.5 h-2.5 bg-[#09090B] rounded-full" />
-                <h3 className="font-heading text-base sm:text-lg text-[#09090B]">
-                  HOW IT WORKS
-                </h3>
+              {/* 2. Why we need it */}
+              <div>
+                <h4 className="font-mono-brutal text-xs font-bold uppercase text-[#09090B] bg-white px-2 py-0.5 border border-[#09090B] rounded inline-block mb-1.5 shadow-[1px_1px_0px_0px_#09090B]">
+                  02. WHY WE NEED IT
+                </h4>
+                <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed">
+                  {topic.theory.whyWeNeedIt}
+                </p>
               </div>
-              <p className="text-xs sm:text-sm text-[#09090B]/90 font-medium leading-relaxed">
-                {topic.theory.howItWorks}
-              </p>
-            </div>
 
-            {/* Bento Card 4: THE SOLUTION */}
-            <div className="bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] p-5 shadow-[4px_4px_0px_0px_#09090B]">
-              <div className="flex items-center gap-2 border-b-2 border-[#09090B]/20 pb-2 mb-3">
-                <span className="w-2.5 h-2.5 bg-[#D2E823] border border-[#09090B] rounded-full" />
-                <h3 className="font-heading text-base sm:text-lg text-[#09090B]">
-                  THE SOLUTION
-                </h3>
+              {/* 3. How it works */}
+              <div>
+                <h4 className="font-mono-brutal text-xs font-bold uppercase text-[#09090B] bg-white px-2 py-0.5 border border-[#09090B] rounded inline-block mb-1.5 shadow-[1px_1px_0px_0px_#09090B]">
+                  03. HOW IT WORKS
+                </h4>
+                <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed">
+                  {topic.theory.howItWorks}
+                </p>
               </div>
-              <p className="text-xs sm:text-sm text-[#09090B]/90 font-medium leading-relaxed mb-3">
-                {topic.theory.theSolution}
-              </p>
-              <div className="bg-white border border-[#09090B] p-2.5 rounded-[6px] font-mono-brutal text-xs font-bold text-[#09090B]">
-                $ {topic.hint}
+
+              {/* 4. The solution */}
+              <div className="p-3 bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] shadow-[2px_2px_0px_0px_#09090B]">
+                <h4 className="font-mono-brutal text-[11px] font-bold uppercase text-[#09090B] mb-1">
+                  &gt; THE PROTOCOL COMMAND:
+                </h4>
+                <code className="font-mono-brutal text-xs font-bold text-[#09090B] bg-white px-2 py-1 border border-[#09090B] rounded block">
+                  {topic.hint}
+                </code>
               </div>
             </div>
           </div>
 
-          {/* ======================================================= */}
-          {/* RIGHT SIDE: THE SANDBOX & VISUAL FEEDBACK (7 Columns)   */}
-          {/* ======================================================= */}
+          {/* Right Column: Interactive Sandbox & Terminal Emulator (7 Cols) */}
           <div className="lg:col-span-7 space-y-6">
-            <div className="w-full bg-[#09090B] border-2 border-[#09090B] rounded-[16px] p-6 sm:p-8 shadow-[6px_6px_0px_0px_#D2E823] relative overflow-hidden flex flex-col min-h-[580px]">
-              {/* Terminal Window Chrome */}
-              <div className="flex items-center justify-between border-b-2 border-zinc-800 pb-4 mb-4">
+            {/* Terminal Window */}
+            <div className="bg-[#09090B] border-2 border-[#09090B] rounded-[20px] shadow-[8px_8px_0px_0px_#09090B] overflow-hidden">
+              {/* Terminal Titlebar */}
+              <div className="bg-[#18181B] px-4 py-3 border-b-2 border-[#27272A] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-3.5 h-3.5 rounded-full bg-red-500 border border-[#09090B]" />
-                  <div className="w-3.5 h-3.5 rounded-full bg-yellow-500 border border-[#09090B]" />
-                  <div className="w-3.5 h-3.5 rounded-full bg-green-500 border border-[#09090B]" />
-                  <span className="font-mono-brutal text-xs text-zinc-400 font-bold ml-2">
-                    bash -- sandbox-terminal
+                  <span className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#09090B]" />
+                  <span className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#09090B]" />
+                  <span className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#09090B]" />
+                  <span className="font-mono-brutal text-xs text-[#A1A1AA] ml-2 font-bold">
+                    bash // gitworld-v2.0
                   </span>
                 </div>
-
-                <div className="font-mono-brutal text-[11px] font-bold text-[#D2E823] bg-zinc-900 px-2.5 py-0.5 rounded border border-zinc-700">
-                  SANDBOX ACTIVE
+                <div className="flex items-center gap-2">
+                  <span className="font-mono-brutal text-[11px] text-[#D2E823] bg-[#09090B] px-2 py-0.5 rounded border border-[#27272A]">
+                    {currentBranch}
+                  </span>
                 </div>
               </div>
 
-              {/* Terminal Log Output Area */}
-              <div className="flex-1 font-mono-brutal text-xs space-y-1.5 text-[#D2E823] overflow-y-auto max-h-[260px] pr-2 scrollbar-thin">
+              {/* Terminal Body */}
+              <div className="p-4 sm:p-6 font-mono-brutal text-xs sm:text-sm text-[#F4F4F5] space-y-3 min-h-[340px] max-h-[460px] overflow-y-auto">
                 {terminalHistory.map((item, idx) => (
                   <div
                     key={idx}
-                    className={
+                    className={`leading-relaxed ${
                       item.isError
-                        ? 'text-[#FF3333] font-bold'
+                        ? 'text-[#FF5555] font-bold'
                         : item.isSuccess
-                        ? 'text-white font-bold bg-[#D2E823]/20 px-2 py-1 rounded'
+                        ? 'text-[#D2E823] font-bold'
                         : item.isUser
-                        ? 'text-white font-bold'
-                        : 'text-[#D2E823]/90'
-                    }
+                        ? 'text-[#F4F4F5] font-bold'
+                        : 'text-[#A1A1AA]'
+                    }`}
                   >
                     {item.text}
                   </div>
                 ))}
+
+                {/* Smart Failsafe Brutalist Error Block */}
+                {errorFeedback && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="p-3 bg-[#FF3333] text-[#09090B] border-2 border-[#09090B] rounded-[8px] shadow-[4px_4px_0px_0px_#09090B] font-mono-brutal text-xs font-bold select-none"
+                  >
+                    <div className="flex items-center gap-2 mb-1 text-[#09090B]">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      <span className="uppercase tracking-wider">COMMAND FAULT DETECTED</span>
+                    </div>
+                    <p className="leading-snug">{errorFeedback}</p>
+                  </motion.div>
+                )}
+
+                {/* Dynamic SVG Branching Animation (Topic 03 Branching Specific) */}
+                {topic.id === 'branching' && showAnimation && (
+                  <div className="py-4">
+                    <BranchingVisualizer
+                      mainBranch="main"
+                      featureBranch={currentBranch !== 'main' ? currentBranch : 'feature/quantum-leap'}
+                      isDiverged={true}
+                    />
+                  </div>
+                )}
+
+                {/* Animated Graph / Box for other topics */}
+                {topic.id !== 'branching' && showAnimation && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-4 bg-[#18181B] border-2 border-[#D2E823] rounded-[12px] text-[#D2E823] font-mono-brutal text-xs space-y-1 shadow-[4px_4px_0px_0px_#D2E823]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      <span className="font-bold uppercase">CRYPTOGRAPHIC DAG GENERATED</span>
+                    </div>
+                    <div className="text-[11px] text-[#A1A1AA]">
+                      &gt; Object: commit e89f41b2c7... (tree 9a01fd...)
+                    </div>
+                    <div className="text-[11px] text-[#A1A1AA]">
+                      &gt; Ref updated: refs/heads/{currentBranch}
+                    </div>
+                  </motion.div>
+                )}
+
                 <div ref={terminalEndRef} />
               </div>
 
-              {/* ===================================================== */}
-              {/* FAKE GIT ANIMATION SEQUENCE (Revealed DOM on success) */}
-              {/* ===================================================== */}
-              <AnimatePresence>
-                {showAnimation && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.85, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: 0.4, ease: [0.77, 0, 0.175, 1] }}
-                    className="my-4 p-4 bg-[#F8F4E8] text-[#09090B] border-2 border-[#D2E823] rounded-[10px] shadow-[4px_4px_0px_0px_#D2E823]"
-                  >
-                    {topic.id === 'init' && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Folder className="w-5 h-5 text-[#09090B]" />
-                          <span className="font-heading text-base sm:text-lg text-[#09090B]">
-                            DIRECTORY INITIALIZED: ~/{simulatedRepoName}/.git
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-[11px] font-mono-brutal font-bold text-[#09090B]/80 pt-1 border-t border-[#09090B]/20">
-                          <div>✔ objects/ (hash storage)</div>
-                          <div>✔ refs/heads/main</div>
-                          <div>✔ HEAD -&gt; refs/heads/main</div>
-                          <div>✔ config (genesis)</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {topic.id === 'commit' && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Layers className="w-5 h-5 text-[#09090B]" />
-                          <span className="font-heading text-base sm:text-lg text-[#09090B]">
-                            IMMUTABLE COMMIT SNAPSHOT SEALED
-                          </span>
-                        </div>
-                        <div className="text-[11px] font-mono-brutal font-bold text-[#09090B]/80 pt-1 border-t border-[#09090B]/20">
-                          <div>commit sha1: [b8f4a1c9e832049d]</div>
-                          <div>Author: BrutalistDev &lt;dev@gitworld.dev&gt;</div>
-                          <div>Root tree snapshot linked into DAG.</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {topic.id === 'branching' && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <GitBranch className="w-5 h-5 text-[#09090B]" />
-                          <span className="font-heading text-base sm:text-lg text-[#09090B]">
-                            PARALLEL TRACK FORKED: [{currentBranch}]
-                          </span>
-                        </div>
-                        <div className="text-[11px] font-mono-brutal font-bold text-[#09090B]/80 pt-1 border-t border-[#09090B]/20">
-                          <div>HEAD detached from main -&gt; switched to {currentBranch}</div>
-                          <div>Orthogonal SVG branch line animated below.</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {topic.id === 'merging' && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Zap className="w-5 h-5 text-[#09090B]" />
-                          <span className="font-heading text-base sm:text-lg text-[#09090B]">
-                            TIMELINE SYNTHESIZED: FAST-FORWARD MERGE
-                          </span>
-                        </div>
-                        <div className="text-[11px] font-mono-brutal font-bold text-[#09090B]/80 pt-1 border-t border-[#09090B]/20">
-                          <div>Updating main pointer: 8f4a1c..e4b901</div>
-                          <div>Fast-forward merge complete. Zero conflicts encountered.</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {topic.id === 'conflicts' && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-5 h-5 text-[#09090B]" />
-                          <span className="font-heading text-base sm:text-lg text-[#09090B]">
-                            CRUCIBLE DIFF RESOLUTION CONCLUDED
-                          </span>
-                        </div>
-                        <div className="text-[11px] font-mono-brutal font-bold text-[#09090B]/80 pt-1 border-t border-[#09090B]/20">
-                          <div>Resolved collision markers: &lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD cleansed.</div>
-                          <div>Merge commit forged. The entire curriculum is mastered!</div>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* ===================================================== */}
-              {/* SUCCESS STATE BADGE & PROCEED BUTTON */}
-              {/* ===================================================== */}
-              <AnimatePresence>
-                {showSuccessBadge && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.6, rotate: -8 }}
-                    animate={{ opacity: 1, scale: 1, rotate: -2 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                    className="my-3 p-4 bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-[12px] shadow-[6px_6px_0px_0px_#09090B] flex flex-col sm:flex-row items-center justify-between gap-4 select-none"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#09090B] text-[#D2E823] flex items-center justify-center font-bold shrink-0">
-                        <Sparkles className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-heading text-xl sm:text-2xl text-[#09090B] tracking-tight leading-none">
-                          QUEST COMPLETE!
-                        </h4>
-                        <span className="font-mono-brutal text-xs font-bold text-[#09090B]/80">
-                          +{topic.xp} XP AWARDED // STAGE UNLOCKED
-                        </span>
-                      </div>
-                    </div>
-
-                    {topic.nextTopicId ? (
-                      <Link
-                        href={`/topic/${topic.nextTopicId}`}
-                        className="px-5 py-2.5 bg-[#09090B] text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[6px] border-2 border-[#09090B] shadow-[4px_4px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#09090B] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center gap-2 cursor-pointer shrink-0"
-                      >
-                        <span>PROCEED TO {topic.nextTopicTitle}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    ) : (
-                      <Link
-                        href="/journey"
-                        className="px-5 py-2.5 bg-[#09090B] text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[6px] border-2 border-[#09090B] shadow-[4px_4px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_#09090B] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex items-center gap-2 cursor-pointer shrink-0"
-                      >
-                        <span>VIEW COMPLETED TIMELINE</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Active Terminal Input Bar */}
+              {/* Terminal Command Input Form */}
               <form
                 onSubmit={handleCommandSubmit}
-                className="mt-auto pt-3 border-t-2 border-zinc-800 flex items-center gap-2"
+                className="p-3 sm:p-4 bg-[#18181B] border-t-2 border-[#27272A] flex items-center gap-3"
               >
-                <span className="font-mono-brutal text-sm font-bold text-[#D2E823] shrink-0 select-none">
-                  &gt;_
+                <span className="text-[#D2E823] font-mono-brutal font-bold text-sm sm:text-base select-none">
+                  $&gt;
                 </span>
                 <input
                   ref={inputRef}
                   type="text"
                   value={terminalInput}
-                  onChange={(e) => {
-                    setTerminalInput(e.target.value);
-                  }}
+                  onChange={(e) => setTerminalInput(e.target.value)}
                   disabled={isCommandLocked}
                   placeholder={
                     isCommandLocked
-                      ? 'Quest executed & locked. Proceed to next stage.'
-                      : `Type '${topic.hint}' and press Enter...`
+                      ? 'Quest validated! See next stage below.'
+                      : `Type '${topic.hint}'`
                   }
-                  className={`w-full bg-transparent font-mono-brutal text-xs sm:text-sm font-bold focus:outline-none transition-colors ${
-                    isCommandLocked
-                      ? 'text-zinc-600 cursor-not-allowed italic'
-                      : 'text-[#D2E823] placeholder:text-zinc-600'
-                  }`}
-                  autoFocus
+                  className="flex-1 bg-transparent text-[#F4F4F5] font-mono-brutal text-xs sm:text-sm outline-none placeholder:text-[#52525B] disabled:cursor-not-allowed"
                 />
-                {!isCommandLocked && (
-                  <button
-                    type="submit"
-                    className="px-3 py-1 bg-[#D2E823] text-[#09090B] font-mono-brutal text-xs font-bold rounded border border-[#09090B] hover:bg-white transition-colors cursor-pointer shrink-0"
-                  >
-                    RUN
-                  </button>
-                )}
+                <button
+                  type="submit"
+                  disabled={isCommandLocked || !terminalInput.trim()}
+                  className="px-4 py-2 bg-[#D2E823] hover:bg-[#b8cc1c] text-[#09090B] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span>EXECUTE</span>
+                  <CornerDownLeft className="w-3.5 h-3.5" />
+                </button>
               </form>
-
-              {/* ===================================================== */}
-              {/* SMART FAILSAFE ERROR BLOCK (Background #FF3333)       */}
-              {/* ===================================================== */}
-              <AnimatePresence>
-                {errorFeedback && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                    transition={{ duration: 0.2 }}
-                    className="mt-3 p-3.5 bg-[#FF3333] text-[#09090B] border-2 border-[#09090B] rounded-[8px] shadow-[4px_4px_0px_0px_#09090B] flex items-start gap-3 select-none font-body"
-                  >
-                    <div className="w-6 h-6 rounded bg-[#09090B] text-[#FF3333] flex items-center justify-center font-bold shrink-0 mt-0.5 border border-[#09090B]">
-                      <AlertTriangle className="w-4 h-4 text-[#FF3333]" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-mono-brutal text-[10px] font-bold uppercase tracking-wider text-[#09090B]/80 mb-0.5">
-                        TERMINAL ERROR // RETRY READY
-                      </div>
-                      <p className="font-body text-xs sm:text-sm font-bold leading-snug text-[#09090B]">
-                        {errorFeedback}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
-            {/* ======================================================= */}
-            {/* FEATURE 2: THE BRANCHING VISUALIZATION (SVG + FRAMER)   */}
-            {/* Rendered below the terminal for branch manipulation     */}
-            {/* ======================================================= */}
-            {(topic.id === 'branching' || topic.id === 'merging') && (
-              <BranchingVisualizer
-                isBranchCreated={showAnimation || topic.id === 'merging'}
-                currentBranch={currentBranch}
-                stageName={topic.stageName}
-              />
-            )}
+            {/* Success Quest Banner sticker */}
+            <AnimatePresence>
+              {showSuccessBadge && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 15 }}
+                  className="p-6 bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-[16px] shadow-[6px_6px_0px_0px_#09090B] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-[12px] bg-[#09090B] text-[#D2E823] flex items-center justify-center font-heading text-xl border border-[#09090B] flex-shrink-0">
+                      ✓
+                    </div>
+                    <div>
+                      <h4 className="font-heading text-xl text-[#09090B] tracking-tight leading-none mb-1">
+                        STAGE QUEST COMPLETED!
+                      </h4>
+                      <p className="font-mono-brutal text-xs font-bold text-[#09090B]/80">
+                        Earned +{topic.xp} XP. State saved to local & cloud ledger.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {topic.nextTopicId ? (
+                      <Link
+                        href={`/topic/${topic.nextTopicId}`}
+                        className="py-2.5 px-4 bg-[#09090B] hover:bg-white hover:text-[#09090B] text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-2 cursor-pointer text-center"
+                      >
+                        <span>NEXT: {topic.nextTopicTitle}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/journey"
+                        className="py-2.5 px-4 bg-[#09090B] hover:bg-white hover:text-[#09090B] text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-2 cursor-pointer text-center"
+                      >
+                        <span>BACK TO JOURNEY TREE</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </main>

@@ -2,29 +2,23 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Mail, Lock, ArrowRight } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  initialMode?: 'login' | 'signup';
-}
-
-export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: AuthModalProps) {
-  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }) {
+  const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
   const [pendingConfirmation, setPendingConfirmation] = useState(false);
 
   const router = useRouter();
   const supabase = createClient();
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
@@ -42,7 +36,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
           setErrorMsg(error.message);
         } else if (data?.user && !data?.session) {
           // Email confirmation pending: DO NOT redirect to /journey!
-          // Keep the user on the landing page and display confirmation card
           setPendingConfirmation(true);
         } else if (data?.session) {
           // Session is truthy: verified immediately
@@ -61,7 +54,6 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
         if (error) {
           setErrorMsg(error.message);
         } else if (data?.session) {
-          // Session is truthy
           setSuccessMsg('WELCOME BACK! REDIRECTING TO YOUR JOURNEY...');
           setTimeout(() => {
             onClose();
@@ -71,7 +63,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }: A
           setErrorMsg('SESSION NOT ESTABLISHED. PLEASE VERIFY YOUR EMAIL OR CREDENTIALS.');
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       setErrorMsg(err?.message || 'AN UNEXPECTED ERROR OCCURRED.');
     } finally {
       setLoading(false);
