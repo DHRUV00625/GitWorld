@@ -21,22 +21,17 @@ const DotField = memo(({
   ...rest
 }) => {
   const canvasRef = useRef(null);
-  const svgRef = useRef(null);
-  const glowRef = useRef(null);
   const dotsRef = useRef([]);
   const mouseRef = useRef({ x: -9999, y: -9999, prevX: -9999, prevY: -9999, speed: 0 });
   const rafRef = useRef(null);
   const sizeRef = useRef({ w: 0, h: 0, offsetX: 0, offsetY: 0 });
-  const glowOpacity = useRef(0);
   const engagement = useRef(0);
   const propsRef = useRef({});
   propsRef.current = { dotRadius, dotSpacing, cursorRadius, cursorForce, bulgeOnly, bulgeStrength, sparkle, waveAmplitude, gradientFrom, gradientTo };
   const rebuildRef = useRef(null);
-  const glowIdRef = useRef(`dot-field-glow-${Math.random().toString(36).slice(2, 9)}`);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const glowEl = glowRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: true });
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -124,20 +119,13 @@ const DotField = memo(({
       if (engagement.current < 0.001) engagement.current = 0;
       const eng = engagement.current;
 
-      glowOpacity.current += (eng - glowOpacity.current) * 0.08;
-
-      if (glowEl) {
-        glowEl.setAttribute('cx', m.x);
-        glowEl.setAttribute('cy', m.y);
-        glowEl.style.opacity = glowOpacity.current;
-      }
-
       ctx.clearRect(0, 0, w, h);
 
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      grad.addColorStop(0, p.gradientFrom);
-      grad.addColorStop(1, p.gradientTo);
-      ctx.fillStyle = grad;
+      // Dynamic Radial Gradient centered on mouse coordinates
+      const cursorGrad = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, p.cursorRadius);
+      cursorGrad.addColorStop(0, '#D2E823'); // Acid Green highlight
+      cursorGrad.addColorStop(1, 'rgba(9, 9, 11, 0.3)'); // Faded ink black base
+      ctx.fillStyle = cursorGrad;
 
       const cr = p.cursorRadius;
       const crSq = cr * cr;
@@ -242,31 +230,6 @@ const DotField = memo(({
           height: '100%',
         }}
       />
-      <svg
-        ref={svgRef}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-        }}
-      >
-        <defs>
-          <radialGradient id={glowIdRef.current}>
-            <stop offset="0%" stopColor={glowColor} />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-        </defs>
-        <circle
-          ref={glowRef}
-          cx="-9999"
-          cy="-9999"
-          r={glowRadius}
-          fill={`url(#${glowIdRef.current})`}
-          style={{ opacity: 0, willChange: 'opacity' }}
-        />
-      </svg>
     </div>
   );
 });

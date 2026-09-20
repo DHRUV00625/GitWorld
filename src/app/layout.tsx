@@ -37,7 +37,7 @@ export default function RootLayout({
             gradientFrom="rgba(9, 9, 11, 0.5)"
             gradientTo="rgba(9, 9, 11, 0.15)"
             glowColor="#D2E823"
-            dotSpacing={24}
+            dotSpacing={10}
             dotRadius={1.5}
             sparkle={false}
             waveAmplitude={0}
