@@ -1,20 +1,23 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { Dela_Gothic_One, Space_Grotesk } from 'next/font/google';
+import './globals.css';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const delaGothic = Dela_Gothic_One({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-dela',
+  display: 'swap',
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "GitWorld - Interactive Git & GitHub Learning",
-  description: "Master Git commands, branching, and repository workflows through interactive gamified quests.",
+  title: 'GitWorld - Interactive Git & GitHub Learning',
+  description: 'Master Git commands, branching, and repository workflows through interactive gamified quests.',
 };
 
 export default function RootLayout({
@@ -25,9 +28,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${delaGothic.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col font-body">{children}</body>
     </html>
   );
 }

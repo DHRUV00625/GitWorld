@@ -1,6 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
 @import "tailwindcss";
 
+@theme {
+  --font-heading: var(--font-dela), sans-serif;
+  --font-body: var(--font-space), sans-serif;
+}
+
 @layer base {
   :root {
     --bg-paper: #F8F4E8;
@@ -11,19 +16,19 @@
   body {
     background-color: var(--bg-paper);
     color: var(--ink-black);
-    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-space), 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 500;
     overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6, .font-heading {
-    font-family: 'Dela Gothic One', cursive, sans-serif;
+    font-family: var(--font-dela), 'Dela Gothic One', sans-serif;
     text-transform: uppercase;
     letter-spacing: -0.05em;
   }
 
   .font-body {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-space), 'Space Grotesk', sans-serif;
   }
 
   .font-mono-brutal {
