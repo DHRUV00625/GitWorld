@@ -121,17 +121,19 @@ const DotField = memo(({
 
       ctx.clearRect(0, 0, w, h);
 
-      // Dynamic Radial Gradient centered on mouse coordinates
-      const cursorGrad = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, p.cursorRadius);
-      cursorGrad.addColorStop(0, '#D2E823'); // Acid Green highlight
-      cursorGrad.addColorStop(1, 'rgba(9, 9, 11, 0.3)'); // Faded ink black base
-      ctx.fillStyle = cursorGrad;
+      // Soft Acid Green illumination behind matrix
+      const bgGrad = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, 300);
+      bgGrad.addColorStop(0, 'rgba(210, 232, 35, 0.8)'); // Vibrant Acid Green center
+      bgGrad.addColorStop(1, 'rgba(210, 232, 35, 0)');   // Fade to transparent
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
 
       const cr = p.cursorRadius;
       const crSq = cr * cr;
       const rad = p.dotRadius / 2;
       const isBulge = p.bulgeOnly;
 
+      ctx.fillStyle = '#09090B';
       ctx.beginPath();
 
       for (let i = 0; i < len; i++) {
@@ -144,7 +146,7 @@ const DotField = memo(({
           const dist = Math.sqrt(distSq);
           if (isBulge) {
             const t = 1 - dist / cr;
-            const push = t * t * p.bulgeStrength * eng;
+            const push = t * t * -Math.abs(p.bulgeStrength) * eng;
             const angle = Math.atan2(dy, dx);
             d.sx += (d.ax - Math.cos(angle) * push - d.sx) * 0.15;
             d.sy += (d.ay - Math.sin(angle) * push - d.sy) * 0.15;
@@ -175,19 +177,14 @@ const DotField = memo(({
           drawX += Math.cos(d.ay * 0.03 + t * 0.7) * p.waveAmplitude * 0.5;
         }
 
-        if (p.sparkle) {
-          const hash = ((i * 2654435761) ^ (frameCount >> 3)) >>> 0;
-          if ((hash % 100) < 3) {
-            ctx.moveTo(drawX + rad * 1.8, drawY);
-            ctx.arc(drawX, drawY, rad * 1.8, 0, TWO_PI);
-          } else {
-            ctx.moveTo(drawX + rad, drawY);
-            ctx.arc(drawX, drawY, rad, 0, TWO_PI);
-          }
-        } else {
-          ctx.moveTo(drawX + rad, drawY);
-          ctx.arc(drawX, drawY, rad, 0, TWO_PI);
+        let currentRad = rad;
+        if (distSq < crSq) {
+          const dist = Math.sqrt(distSq);
+          // Scale dots up by up to 2px when near the cursor
+          currentRad = rad + (1 - dist / cr) * 2.5;
         }
+        ctx.moveTo(drawX + currentRad, drawY);
+        ctx.arc(drawX, drawY, currentRad, 0, TWO_PI);
       }
 
       ctx.fill();
