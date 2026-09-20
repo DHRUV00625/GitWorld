@@ -8,6 +8,7 @@ import { useGitStore } from '@/store/useGitStore';
 import { createClient } from '@/utils/supabase/client';
 import NoiseOverlay from '@/components/NoiseOverlay';
 import CustomCursor from '@/components/CustomCursor';
+import BranchingVisualizer from '@/components/BranchingVisualizer';
 import {
   ArrowLeft,
   Terminal as TerminalIcon,
@@ -23,6 +24,7 @@ import {
   Zap,
   CornerDownLeft,
   RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface TopicMeta {
@@ -71,7 +73,7 @@ const TOPIC_REGISTRY: Record<string, TopicMeta> = {
     stageName: 'COMMIT',
     title: 'IMMUTABLE SNAPSHOTS',
     xp: 150,
-    expectedPattern: /^git\s+(?:add\s+.*&&.*)?commit.*$/,
+    expectedPattern: /^git\s+(?:add\s+.*&&.*)?commit(?:\s+-m\s+["'](.+?)["']|\s+.*)?$/,
     hint: 'git commit -m "feat: genesis snapshot"',
     theory: {
       whatItIs:
@@ -151,6 +153,241 @@ const TOPIC_REGISTRY: Record<string, TopicMeta> = {
   },
 };
 
+// Levenshtein Distance for typo identification
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i - 1].toLowerCase() === b[j - 1].toLowerCase()) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,
+          dp[i][j - 1] + 1,
+          dp[i - 1][j - 1] + 1
+        );
+      }
+    }
+  }
+  return dp[m][n];
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errorMessage?: string;
+  capturedArg?: string;
+}
+
+// Smart Failsafe Validation Function
+function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return {
+      isValid: false,
+      errorMessage: `> SYNTAX FAULT: Empty command buffer. Try typing '${topic.hint}'.`,
+    };
+  }
+
+  // 1. Check direct regex match
+  const match = trimmed.match(topic.expectedPattern);
+  if (match) {
+    return {
+      isValid: true,
+      capturedArg: match[1] || undefined,
+    };
+  }
+
+  // 2. Tokenize by whitespace for word-by-word comparison
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+
+  // Check first token (must be 'git')
+  const firstWord = tokens[0].toLowerCase();
+  if (firstWord !== 'git') {
+    if (levenshteinDistance(firstWord, 'git') <= 2) {
+      return {
+        isValid: false,
+        errorMessage: `> SYNTAX FAULT: You typed '${tokens[0]}'. Did you mean 'git'? Try again.`,
+      };
+    }
+    return {
+      isValid: false,
+      errorMessage: `> SYNTAX FAULT: All Git commands must start with 'git'. You typed '${tokens[0]}'. Did you mean 'git ${topic.hint.replace(/^git\s*/, '')}'?`,
+    };
+  }
+
+  // Only typed 'git'
+  if (tokens.length === 1) {
+    return {
+      isValid: false,
+      errorMessage: `> SYNTAX FAULT: Missing sub-command after 'git'. Try typing '${topic.hint}'.`,
+    };
+  }
+
+  const secondWord = tokens[1].toLowerCase();
+
+  // 3. Stage-specific syntactic analysis
+  if (topic.id === 'branching') {
+    const validBranchingWords = ['branch', 'checkout', 'switch'];
+
+    // Word-by-word typo check on branching sub-command
+    for (const validWord of validBranchingWords) {
+      const dist = levenshteinDistance(secondWord, validWord);
+      if (dist > 0 && dist <= 2) {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git ${validWord}'? Try again.`,
+        };
+      }
+    }
+
+    // Check if user typed other valid git sub-commands that don't apply to branching
+    if (['init', 'commit', 'merge', 'push', 'pull', 'status', 'add'].includes(secondWord)) {
+      return {
+        isValid: false,
+        errorMessage: `> SYNTAX FAULT: Sub-command '${tokens[1]}' belongs to another stage. For branching, use 'git checkout -b <branch>' or 'git branch <branch>'.`,
+      };
+    }
+
+    // Checkout flags check
+    if (secondWord === 'checkout') {
+      if (tokens.length === 2) {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: Missing '-b' flag and branch name. To create and switch to a new branch, use 'git checkout -b <branch-name>'.`,
+        };
+      }
+      if (tokens[2] !== '-b') {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: Missing '-b' flag. You typed 'git checkout ${tokens[2]}'. To create and switch to a new branch simultaneously, use 'git checkout -b ${tokens[2]}'.`,
+        };
+      }
+      if (tokens.length === 3) {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: Missing branch name operand after '-b'. Specify a branch, e.g., 'git checkout -b feature/quantum-leap'.`,
+        };
+      }
+    }
+
+    // Switch flags check
+    if (secondWord === 'switch') {
+      if (tokens.length === 2) {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: Missing '-c' flag and branch name. Use 'git switch -c <branch-name>'.`,
+        };
+      }
+      if (tokens[2] !== '-c') {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: Missing '-c' flag. You typed 'git switch ${tokens[2]}'. Use 'git switch -c ${tokens[2]}'.`,
+        };
+      }
+      if (tokens.length === 3) {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: Missing branch name operand after '-c'. Specify a branch, e.g., 'git switch -c feature/quantum-leap'.`,
+        };
+      }
+    }
+
+    // Branch flags check
+    if (secondWord === 'branch') {
+      if (tokens.length === 2) {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: Missing branch name operand. Specify a branch name, e.g., 'git branch feature/quantum-leap'.`,
+        };
+      }
+    }
+  } else if (topic.id === 'init') {
+    const dist = levenshteinDistance(secondWord, 'init');
+    if (dist > 0 && dist <= 2) {
+      return {
+        isValid: false,
+        errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git init'? Try again.`,
+      };
+    }
+    if (['branch', 'checkout', 'commit', 'merge', 'push', 'pull', 'status'].includes(secondWord)) {
+      return {
+        isValid: false,
+        errorMessage: `> SYNTAX FAULT: Sub-command '${tokens[1]}' is unexpected for repository initialization. Use 'git init <repo-name>'.`,
+      };
+    }
+  } else if (topic.id === 'commit') {
+    const dist = levenshteinDistance(secondWord, 'commit');
+    if (dist > 0 && dist <= 2) {
+      return {
+        isValid: false,
+        errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git commit'? Try again.`,
+      };
+    }
+    if (secondWord === 'commit') {
+      if (!trimmed.includes('-m')) {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: Missing '-m' flag for commit message. Format: git commit -m "<message>".`,
+        };
+      }
+      if (!trimmed.includes('"') && !trimmed.includes("'")) {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: Commit message must be enclosed in quotes: git commit -m "feat: your message".`,
+        };
+      }
+    }
+  } else if (topic.id === 'merging') {
+    const dist = levenshteinDistance(secondWord, 'merge');
+    if (dist > 0 && dist <= 2) {
+      return {
+        isValid: false,
+        errorMessage: `> SYNTAX FAULT: You typed 'git ${tokens[1]}'. Did you mean 'git merge'? Try again.`,
+      };
+    }
+    if (secondWord === 'merge' && tokens.length === 2) {
+      return {
+        isValid: false,
+        errorMessage: `> SYNTAX FAULT: Missing branch operand to merge. Specify a branch name, e.g., 'git merge feature/quantum-leap'.`,
+      };
+    }
+  } else if (topic.id === 'conflicts') {
+    if (secondWord !== 'commit' && secondWord !== 'add' && secondWord !== 'merge') {
+      return {
+        isValid: false,
+        errorMessage: `> SYNTAX FAULT: For conflict resolution, stage changes or commit. Try: '${topic.hint}'.`,
+      };
+    }
+  }
+
+  // 4. Word-by-word token comparison against topic hint
+  const expectedTokens = topic.hint.split(/\s+/);
+  for (let i = 0; i < Math.max(tokens.length, expectedTokens.length); i++) {
+    const userToken = tokens[i];
+    const expToken = expectedTokens[i];
+    if (userToken && expToken && userToken.toLowerCase() !== expToken.toLowerCase()) {
+      const dist = levenshteinDistance(userToken, expToken);
+      if (dist <= 2) {
+        return {
+          isValid: false,
+          errorMessage: `> SYNTAX FAULT: You typed '${userToken}'. Did you mean '${expToken}'? Try again.`,
+        };
+      }
+    }
+  }
+
+  return {
+    isValid: false,
+    errorMessage: `> SYNTAX FAULT: Unrecognized syntax '${trimmed}'. Did you mean '${topic.hint}'? Try again.`,
+  };
+}
+
 export default function TopicPage() {
   const params = useParams();
   const router = useRouter();
@@ -172,6 +409,7 @@ export default function TopicPage() {
   const [terminalHistory, setTerminalHistory] = useState<
     { text: string; isUser?: boolean; isError?: boolean; isSuccess?: boolean }[]
   >([]);
+  const [errorFeedback, setErrorFeedback] = useState<string | null>(null);
   const [isCommandLocked, setIsCommandLocked] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
   const [showSuccessBadge, setShowSuccessBadge] = useState(false);
@@ -185,6 +423,7 @@ export default function TopicPage() {
   useEffect(() => {
     const activeRepo = repoName || 'gitworld-project';
     setSimulatedRepoName(activeRepo);
+    setErrorFeedback(null);
 
     setTerminalHistory([
       { text: `=== GITWORLD TERMINAL EMULATOR // ${topic.stageNum} ===` },
@@ -204,7 +443,7 @@ export default function TopicPage() {
   // Auto-scroll terminal to bottom
   useEffect(() => {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [terminalHistory, showAnimation, showSuccessBadge]);
+  }, [terminalHistory, showAnimation, showSuccessBadge, errorFeedback]);
 
   // Command submission logic
   const handleCommandSubmit = async (e: React.FormEvent) => {
@@ -212,95 +451,105 @@ export default function TopicPage() {
     const cmd = terminalInput.trim();
     if (!cmd || isCommandLocked) return;
 
-    // Log the typed command
+    // Log the typed command to history
     const newHistory = [...terminalHistory, { text: `>_ ${cmd}`, isUser: true }];
     setTerminalHistory(newHistory);
-    setTerminalInput('');
 
-    // Check command validity against topic's expected pattern
-    const match = cmd.match(topic.expectedPattern);
+    // Run Smart Failsafe Validation
+    const validation = validateGitCommand(cmd, topic);
 
-    if (match) {
-      // Valid command execution
-      setIsCommandLocked(true); // Lock input immediately: can only be executed once
+    if (!validation.isValid) {
+      // Command contains a syntax fault or typo
+      const faultMsg = validation.errorMessage || `> SYNTAX FAULT: Unrecognized command. Try '${topic.hint}'.`;
+      setErrorFeedback(faultMsg);
 
-      // State persistence logic
-      let updatedRepo = repoName;
-      if (topic.id === 'init') {
-        const customName = match[1] || 'gitworld-project';
-        setRepoName(customName);
-        setSimulatedRepoName(customName);
-        updatedRepo = customName;
-      } else if (topic.id === 'branching') {
-        const customBranch = match[1] || 'feature/sandbox';
-        setCurrentBranch(customBranch);
-      }
-
-      addCompletedCommand(cmd);
-
-      // Add feedback lines
-      setTerminalHistory((prev) => [
-        ...prev,
-        { text: `[OK] Command verified: ${cmd}`, isSuccess: true },
-        { text: `Generating cryptographic Git tree objects...` },
-      ]);
-
-      // Trigger Framer Motion sequence
-      setTimeout(() => {
-        setShowAnimation(true);
-      }, 400);
-
-      // Trigger Quest Complete Sticker
-      setTimeout(() => {
-        setShowSuccessBadge(true);
-      }, 1200);
-
-      // Persist completion to Supabase user_progress table
-      try {
-        const { data: authData } = await supabase.auth.getUser();
-        const cached = localStorage.getItem('gitworld_progress');
-        let currentCompleted: string[] = ['init'];
-        let currentXp = 100;
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed.completed_topics)) currentCompleted = parsed.completed_topics;
-            if (typeof parsed.xp === 'number') currentXp = parsed.xp;
-          } catch {}
-        }
-
-        if (!currentCompleted.includes(topic.id)) {
-          const nextCompleted = [...currentCompleted, topic.id];
-          const nextXp = currentXp + topic.xp;
-          localStorage.setItem(
-            'gitworld_progress',
-            JSON.stringify({ completed_topics: nextCompleted, xp: nextXp })
-          );
-
-          if (authData?.user) {
-            await supabase.from('user_progress').upsert(
-              {
-                user_id: authData.user.id,
-                completed_topics: nextCompleted,
-                xp: nextXp,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'user_id' }
-            );
-          }
-        }
-      } catch (err) {
-        console.warn('Could not sync progress to Supabase:', err);
-      }
-    } else {
-      // Invalid command feedback
       setTerminalHistory((prev) => [
         ...prev,
         {
-          text: `[ERROR] Command unrecognized for this quest. ${topic.hint}`,
+          text: faultMsg,
           isError: true,
         },
       ]);
+
+      // Keep input active and re-focus for instant retry
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      return;
+    }
+
+    // Command is valid! Clear error state and lock input
+    setErrorFeedback(null);
+    setTerminalInput('');
+    setIsCommandLocked(true); // Input can only be executed once
+
+    // State persistence logic
+    let updatedRepo = repoName;
+    if (topic.id === 'init') {
+      const customName = validation.capturedArg || 'gitworld-project';
+      setRepoName(customName);
+      setSimulatedRepoName(customName);
+      updatedRepo = customName;
+    } else if (topic.id === 'branching') {
+      const customBranch = validation.capturedArg || 'feature/quantum-leap';
+      setCurrentBranch(customBranch);
+    }
+
+    addCompletedCommand(cmd);
+
+    // Add feedback lines
+    setTerminalHistory((prev) => [
+      ...prev,
+      { text: `[OK] Command verified: ${cmd}`, isSuccess: true },
+      { text: `Generating cryptographic Git tree objects...` },
+    ]);
+
+    // Trigger Framer Motion sequence
+    setTimeout(() => {
+      setShowAnimation(true);
+    }, 400);
+
+    // Trigger Quest Complete Sticker
+    setTimeout(() => {
+      setShowSuccessBadge(true);
+    }, 1200);
+
+    // Persist completion to Supabase user_progress table
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const cached = localStorage.getItem('gitworld_progress');
+      let currentCompleted: string[] = ['init'];
+      let currentXp = 100;
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.completed_topics)) currentCompleted = parsed.completed_topics;
+          if (typeof parsed.xp === 'number') currentXp = parsed.xp;
+        } catch {}
+      }
+
+      if (!currentCompleted.includes(topic.id)) {
+        const nextCompleted = [...currentCompleted, topic.id];
+        const nextXp = currentXp + topic.xp;
+        localStorage.setItem(
+          'gitworld_progress',
+          JSON.stringify({ completed_topics: nextCompleted, xp: nextXp })
+        );
+
+        if (authData?.user) {
+          await supabase.from('user_progress').upsert(
+            {
+              user_id: authData.user.id,
+              completed_topics: nextCompleted,
+              xp: nextXp,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id' }
+          );
+        }
+      }
+    } catch (err) {
+      console.warn('Could not sync progress to Supabase:', err);
     }
   };
 
@@ -434,10 +683,10 @@ export default function TopicPage() {
           </div>
 
           {/* ======================================================= */}
-          {/* RIGHT SIDE: THE SANDBOX CONTAINER (7 Columns) */}
+          {/* RIGHT SIDE: THE SANDBOX & VISUAL FEEDBACK (7 Columns)   */}
           {/* ======================================================= */}
-          <div className="lg:col-span-7">
-            <div className="w-full bg-[#09090B] border-2 border-[#09090B] rounded-[16px] p-6 sm:p-8 shadow-[6px_6px_0px_0px_#D2E823] relative overflow-hidden flex flex-col min-h-[620px]">
+          <div className="lg:col-span-7 space-y-6">
+            <div className="w-full bg-[#09090B] border-2 border-[#09090B] rounded-[16px] p-6 sm:p-8 shadow-[6px_6px_0px_0px_#D2E823] relative overflow-hidden flex flex-col min-h-[580px]">
               {/* Terminal Window Chrome */}
               <div className="flex items-center justify-between border-b-2 border-zinc-800 pb-4 mb-4">
                 <div className="flex items-center gap-2">
@@ -455,13 +704,13 @@ export default function TopicPage() {
               </div>
 
               {/* Terminal Log Output Area */}
-              <div className="flex-1 font-mono-brutal text-xs space-y-1.5 text-[#D2E823] overflow-y-auto max-h-[280px] pr-2 scrollbar-thin">
+              <div className="flex-1 font-mono-brutal text-xs space-y-1.5 text-[#D2E823] overflow-y-auto max-h-[260px] pr-2 scrollbar-thin">
                 {terminalHistory.map((item, idx) => (
                   <div
                     key={idx}
                     className={
                       item.isError
-                        ? 'text-red-400 font-bold'
+                        ? 'text-[#FF3333] font-bold'
                         : item.isSuccess
                         ? 'text-white font-bold bg-[#D2E823]/20 px-2 py-1 rounded'
                         : item.isUser
@@ -529,7 +778,7 @@ export default function TopicPage() {
                         </div>
                         <div className="text-[11px] font-mono-brutal font-bold text-[#09090B]/80 pt-1 border-t border-[#09090B]/20">
                           <div>HEAD detached from main -&gt; switched to {currentBranch}</div>
-                          <div>Orthogonal branch line active for isolated commits.</div>
+                          <div>Orthogonal SVG branch line animated below.</div>
                         </div>
                       </div>
                     )}
@@ -625,7 +874,9 @@ export default function TopicPage() {
                   ref={inputRef}
                   type="text"
                   value={terminalInput}
-                  onChange={(e) => setTerminalInput(e.target.value)}
+                  onChange={(e) => {
+                    setTerminalInput(e.target.value);
+                  }}
                   disabled={isCommandLocked}
                   placeholder={
                     isCommandLocked
@@ -648,7 +899,46 @@ export default function TopicPage() {
                   </button>
                 )}
               </form>
+
+              {/* ===================================================== */}
+              {/* SMART FAILSAFE ERROR BLOCK (Background #FF3333)       */}
+              {/* ===================================================== */}
+              <AnimatePresence>
+                {errorFeedback && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                    className="mt-3 p-3.5 bg-[#FF3333] text-[#09090B] border-2 border-[#09090B] rounded-[8px] shadow-[4px_4px_0px_0px_#09090B] flex items-start gap-3 select-none font-body"
+                  >
+                    <div className="w-6 h-6 rounded bg-[#09090B] text-[#FF3333] flex items-center justify-center font-bold shrink-0 mt-0.5 border border-[#09090B]">
+                      <AlertTriangle className="w-4 h-4 text-[#FF3333]" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-mono-brutal text-[10px] font-bold uppercase tracking-wider text-[#09090B]/80 mb-0.5">
+                        TERMINAL ERROR // RETRY READY
+                      </div>
+                      <p className="font-body text-xs sm:text-sm font-bold leading-snug text-[#09090B]">
+                        {errorFeedback}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
+
+            {/* ======================================================= */}
+            {/* FEATURE 2: THE BRANCHING VISUALIZATION (SVG + FRAMER)   */}
+            {/* Rendered below the terminal for branch manipulation     */}
+            {/* ======================================================= */}
+            {(topic.id === 'branching' || topic.id === 'merging') && (
+              <BranchingVisualizer
+                isBranchCreated={showAnimation || topic.id === 'merging'}
+                currentBranch={currentBranch}
+                stageName={topic.stageName}
+              />
+            )}
           </div>
         </div>
       </main>
