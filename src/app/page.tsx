@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import AuthModal from '@/components/AuthModal';
 import CustomCursor from '@/components/CustomCursor';
 import NoiseOverlay from '@/components/NoiseOverlay';
+import AuthListener from '@/components/AuthListener';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
@@ -99,14 +100,14 @@ export default function NeoBrutalistLandingPage() {
           </div>
           <div className="space-y-1.5 my-auto">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#09090B]" />
+              <div className="w-3.5 h-3.5 rounded-full bg-[#09090B]" />
               <div className="h-0.5 w-16 bg-[#09090B]" />
-              <div className="w-3 h-3 rounded-full bg-[#D2E823] border border-black" />
+              <div className="w-3.5 h-3.5 rounded-full bg-[#D2E823] border border-black" />
             </div>
             <div className="flex items-center gap-2 pl-4">
               <div className="w-0.5 h-4 bg-[#09090B]" />
               <div className="h-0.5 w-12 bg-[#09090B]" />
-              <div className="w-3 h-3 rounded-full bg-black" />
+              <div className="w-3.5 h-3.5 rounded-full bg-black" />
             </div>
           </div>
           <span className="text-xs font-bold text-[#09090B]">HEAD -&gt; feature/flux</span>
@@ -172,6 +173,9 @@ export default function NeoBrutalistLandingPage() {
 
       {/* Interactive Lerp Blend Cursor */}
       <CustomCursor />
+
+      {/* Auth State Listener for Auto-Redirect */}
+      <AuthListener />
 
       {/* Sticky Neo-Brutalist Navigation */}
       <Navbar />
