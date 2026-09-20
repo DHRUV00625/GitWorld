@@ -14,7 +14,7 @@
   }
 
   body {
-    background-color: var(--bg-paper);
+    background-color: #F8F4E8;
     color: var(--ink-black);
     font-family: var(--font-space), 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 500;

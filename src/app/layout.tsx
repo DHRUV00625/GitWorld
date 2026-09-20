@@ -32,7 +32,7 @@ export default function RootLayout({
       className={`${delaGothic.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-body bg-[#F8F4E8] relative">
-        <div className="fixed inset-0 z-[-1] pointer-events-none">
+        <div className="fixed inset-0 w-full h-full z-0 pointer-events-none">
           <DotField
             gradientFrom="rgba(9, 9, 11, 0.5)"
             gradientTo="rgba(9, 9, 11, 0.15)"

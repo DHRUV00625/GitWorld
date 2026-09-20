@@ -323,7 +323,7 @@ export default function JourneyTimelinePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F4E8] text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative pb-32">
+    <div className="min-h-screen text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative z-10 bg-transparent pb-32">
       <NoiseOverlay />
       <CustomCursor />
 

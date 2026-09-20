@@ -167,7 +167,7 @@ export default function NeoBrutalistLandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8F4E8] text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative">
+    <div className="min-h-screen text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative z-10 bg-transparent">
       {/* Viewport Noise Grain Overlay (3% opacity) */}
       <NoiseOverlay />
 
