@@ -10,6 +10,7 @@ import NoiseOverlay from '@/components/NoiseOverlay';
 import CustomCursor from '@/components/CustomCursor';
 import BranchingVisualizer from '@/components/BranchingVisualizer';
 import InitVisualizer from '@/components/InitVisualizer';
+import TimelineGraph from '@/components/TimelineGraph';
 import {
   ArrowLeft,
   Terminal as TerminalIcon,
@@ -705,16 +706,7 @@ export default function TopicDetailPage() {
                   </button>
                 )}
 
-                {revealedCount < 4 ? (
-                  <button
-                    type="button"
-                    onClick={() => setRevealedCount((prev) => Math.min(4, prev + 1))}
-                    className="px-3 py-1 bg-[#D2E823] hover:bg-white text-[#09090B] font-heading text-xs uppercase tracking-tight rounded-[6px] border border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>NEXT</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
+                {revealedCount === 4 && (
                   <span className="px-2.5 py-1 bg-[#D2E823] text-[#09090B] font-mono-brutal text-[10px] font-bold uppercase rounded border border-[#09090B]">
                     ALL 4 REVEALED ✓
                   </span>
@@ -724,33 +716,53 @@ export default function TopicDetailPage() {
 
             {/* 4 Brutalist Bento Cards Stacked */}
             <div className="space-y-3">
-              {bentoCards.map((card) => {
-                const isRevealed = card.step <= revealedCount;
+              {bentoCards.map((card, index) => {
+                const activeIndex = revealedCount - 1;
+                const isLocked = index > activeIndex;
+                const isActive = index === activeIndex;
+
+                if (isLocked) {
+                  return (
+                    <motion.div
+                      key={card.step}
+                      initial={false}
+                      animate={{ opacity: 0.45, scale: 0.98 }}
+                      className="border-2 border-dashed border-[#09090B]/40 rounded-[16px] p-5 bg-[#F8F4E8]/60 shadow-none transition-all select-none"
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="font-mono-brutal text-[10px] font-bold px-2 py-0.5 rounded border border-[#09090B]/30 bg-zinc-200 text-zinc-500">
+                          {card.tag}
+                        </span>
+                        <span className="font-mono-brutal text-[10px] font-bold text-[#09090B]/40">
+                          LOCKED
+                        </span>
+                      </div>
+                      <h3 className="font-heading text-base sm:text-lg text-[#09090B]/40 tracking-tight">
+                        {card.title}
+                      </h3>
+                      <div className="py-1 font-mono-brutal text-xs text-[#09090B]/40">
+                        [ Content locked &bull; Complete previous card ]
+                      </div>
+                    </motion.div>
+                  );
+                }
+
                 return (
                   <motion.div
                     key={card.step}
                     initial={false}
-                    animate={{
-                      opacity: isRevealed ? 1 : 0.45,
-                      scale: isRevealed ? 1 : 0.98,
-                    }}
+                    animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.25 }}
-                    className={`border-2 border-[#09090B] rounded-[16px] p-5 transition-all select-none ${
-                      isRevealed
-                        ? 'bg-white shadow-[4px_4px_0px_0px_#09090B]'
-                        : 'bg-[#F8F4E8]/60 border-dashed border-[#09090B]/40 shadow-none'
-                    }`}
+                    className="border-2 border-[#09090B] rounded-[16px] p-5 bg-white shadow-[4px_4px_0px_0px_#09090B] transition-all select-none"
                   >
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <span
-                        className={`font-mono-brutal text-[10px] font-bold px-2 py-0.5 rounded border border-[#09090B] shadow-[1px_1px_0px_0px_#09090B] ${
-                          isRevealed ? card.accentBg : 'bg-zinc-200 text-zinc-500'
-                        }`}
+                        className={`font-mono-brutal text-[10px] font-bold px-2 py-0.5 rounded border border-[#09090B] shadow-[1px_1px_0px_0px_#09090B] ${card.accentBg}`}
                       >
                         {card.tag}
                       </span>
                       <span className="font-mono-brutal text-[10px] font-bold text-[#09090B]/50">
-                        {isRevealed ? 'REVEALED' : 'LOCKED'}
+                        {isActive ? 'ACTIVE' : 'REVEALED'}
                       </span>
                     </div>
 
@@ -758,19 +770,20 @@ export default function TopicDetailPage() {
                       {card.title}
                     </h3>
 
-                    {isRevealed ? (
-                      <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed">
-                        {card.content}
-                      </p>
-                    ) : (
-                      <div className="py-1 flex items-center justify-between text-xs font-mono-brutal text-[#09090B]/60">
-                        <span>[Card hidden]</span>
+                    <p className="text-xs sm:text-sm text-[#09090B]/85 font-medium leading-relaxed">
+                      {card.content}
+                    </p>
+
+                    {/* Flush 'NEXT >' button placed directly inside the active card */}
+                    {isActive && index < bentoCards.length - 1 && (
+                      <div className="flex justify-end pt-3 mt-3 border-t border-[#09090B]/10">
                         <button
                           type="button"
-                          onClick={() => setRevealedCount(card.step)}
-                          className="text-[#09090B] font-bold underline hover:text-black cursor-pointer text-[11px]"
+                          onClick={() => setRevealedCount((prev) => Math.min(bentoCards.length, prev + 1))}
+                          className="px-4 py-2 bg-[#D2E823] hover:bg-[#c2d820] text-[#09090B] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1.5 cursor-pointer font-bold"
                         >
-                          Reveal Card {card.step} &rarr;
+                          <span>NEXT</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     )}
@@ -908,13 +921,14 @@ export default function TopicDetailPage() {
             </div>
 
             {/* ========================================================= */}
-            {/* VISUAL TIMELINE: Below Terminal (4px Vertical Red Line)   */}
+            {/* VISUAL TIMELINE: Below Terminal (TimelineGraph)           */}
             {/* ========================================================= */}
             <div>
               {topic.id === 'init' ? (
-                <InitVisualizer
+                <TimelineGraph
                   repoName={simulatedRepoName || activeRepo}
-                  isJustInitialized={isJustInitialized}
+                  isInitialized={Boolean(simulatedRepoName || activeRepo)}
+                  commits={[{ id: 'c0', label: 'genesis snapshot' }]}
                   mainBranchName={currentBranch || 'main'}
                   stageName={topic.stageName}
                 />
