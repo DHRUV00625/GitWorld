@@ -27,6 +27,7 @@ import {
   Clock,
   Sparkles,
   Compass,
+  Mail,
 } from 'lucide-react';
 
 interface TopicNodeConfig {
@@ -111,6 +112,7 @@ export default function JourneyTimelinePage() {
   const router = useRouter();
   const [selectedQuest, setSelectedQuest] = useState<QuestNodeData | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [isUnconfirmed, setIsUnconfirmed] = useState<boolean>(false);
   const [completedTopics, setCompletedTopics] = useState<string[]>(['init']);
   const [totalXp, setTotalXp] = useState<number>(100);
   const [shakingNodeId, setShakingNodeId] = useState<string | null>(null);
@@ -150,6 +152,15 @@ export default function JourneyTimelinePage() {
 
         const currentUser = authData.user;
         setUser(currentUser);
+
+        // Auth Gating Check:
+        // Allow access if user.is_anonymous === true.
+        // If user.is_anonymous === false AND !user.email_confirmed_at, show verify email block.
+        const isAnonymous = currentUser.is_anonymous === true;
+        if (!isAnonymous && !currentUser.email_confirmed_at) {
+          setIsUnconfirmed(true);
+          return;
+        }
 
         // If switching accounts or store has data from another user, purge stale state
         const prevStoreUserId = useGitStore.getState().userId;
@@ -322,6 +333,49 @@ export default function JourneyTimelinePage() {
     };
   };
 
+  if (isUnconfirmed) {
+    return (
+      <div className="min-h-screen text-[#09090B] flex items-center justify-center p-4 relative z-10 bg-transparent">
+        <NoiseOverlay />
+        <CustomCursor />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="w-full max-w-md p-6 sm:p-8 bg-[#D2E823] text-[#09090B] border-2 border-[#09090B] rounded-[24px] shadow-[8px_8px_0px_0px_#09090B] text-left select-none font-body"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-[8px] bg-[#09090B] text-[#D2E823] flex items-center justify-center font-bold border border-[#09090B]">
+              <Mail className="w-4 h-4" />
+            </div>
+            <span className="font-mono-brutal text-[10px] font-bold uppercase tracking-wider bg-white px-2.5 py-0.5 border border-[#09090B] rounded shadow-[2px_2px_0px_0px_#09090B]">
+              VERIFICATION REQUIRED
+            </span>
+          </div>
+
+          <h4 className="font-heading text-xl sm:text-2xl text-[#09090B] tracking-tight leading-none mb-2">
+            CHECK YOUR INBOX:
+          </h4>
+
+          <p className="font-body text-xs sm:text-sm font-bold text-[#09090B]/90 leading-relaxed mb-4">
+            A confirmation link was sent to your email. Please verify your email before entering the curriculum.
+          </p>
+
+          <div className="p-2.5 bg-white border-2 border-[#09090B] rounded-[8px] font-mono-brutal text-xs font-bold text-[#09090B] shadow-[2px_2px_0px_0px_#09090B] mb-5">
+            &gt; Target: {user?.email || 'Registered Account'}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            className="w-full py-3 bg-[#09090B] text-[#D2E823] font-heading text-xs uppercase tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all cursor-pointer text-center"
+          >
+            RETURN TO LANDING PAGE
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen text-[#09090B] flex flex-col font-body selection:bg-[#D2E823] selection:text-[#09090B] relative z-10 bg-transparent pb-32">
       <NoiseOverlay />
@@ -329,7 +383,7 @@ export default function JourneyTimelinePage() {
 
       {/* Sticky Header with Level & Sign Out */}
       <JourneyHeader
-        userEmail={user?.email}
+        userEmail={user?.is_anonymous ? 'GUEST JUDGE' : user?.email}
         xp={totalXp}
         level={Math.floor(totalXp / 200) + 1}
       />

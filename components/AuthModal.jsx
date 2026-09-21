@@ -14,9 +14,37 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }) {
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [pendingConfirmation, setPendingConfirmation] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
 
   const router = useRouter();
   const supabase = createClient();
+
+  const handleGuestLogin = async () => {
+    setGuestLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error) {
+        console.error('Anonymous sign in error:', error);
+        setErrorMsg(error.message || 'COULD NOT SIGN IN AS GUEST.');
+      } else if (data?.session) {
+        setSuccessMsg('GUEST ACCESS GRANTED! REDIRECTING TO YOUR JOURNEY...');
+        setTimeout(() => {
+          onClose();
+          router.push('/journey');
+        }, 600);
+      } else {
+        onClose();
+        router.push('/journey');
+      }
+    } catch (err) {
+      console.error('Anonymous sign in exception:', err);
+      setErrorMsg(err?.message || 'AN UNEXPECTED ERROR OCCURRED DURING GUEST LOGIN.');
+    } finally {
+      setGuestLoading(false);
+    }
+  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -272,7 +300,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }) {
 
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || guestLoading}
                     className="w-full mt-4 py-3 px-4 bg-[#09090B] text-[#D2E823] font-heading text-sm tracking-tight rounded-[8px] border-2 border-[#09090B] shadow-[4px_4px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                   >
                     {loading ? (
@@ -282,6 +310,29 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signup' }) {
                         <span>{mode === 'signup' ? 'START EXPLORING' : 'LOG IN TO QUEST'}</span>
                         <ArrowRight className="w-4 h-4" />
                       </>
+                    )}
+                  </button>
+
+                  {/* OR Divider */}
+                  <div className="relative flex items-center justify-center my-4">
+                    <div className="border-t-2 border-[#09090B]/20 w-full" />
+                    <span className="bg-[#F8F4E8] px-3 font-mono-brutal text-xs font-bold text-[#09090B]/60 uppercase select-none">
+                      OR
+                    </span>
+                    <div className="border-t-2 border-[#09090B]/20 w-full" />
+                  </div>
+
+                  {/* Continue as Guest Button */}
+                  <button
+                    type="button"
+                    onClick={handleGuestLogin}
+                    disabled={loading || guestLoading}
+                    className="bg-transparent border-2 border-[#09090B] text-[#09090B] hover:bg-[#D2E823] shadow-[4px_4px_0px_0px_#09090B] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all font-space uppercase py-3 w-full font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    {guestLoading ? (
+                      <span className="inline-block w-4 h-4 border-2 border-[#09090B] border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span>CONTINUE AS GUEST</span>
                     )}
                   </button>
                 </form>
