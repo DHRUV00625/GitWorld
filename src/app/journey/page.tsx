@@ -26,7 +26,6 @@ import {
   AlertCircle,
   Clock,
   Sparkles,
-  Compass,
   Mail,
 } from 'lucide-react';
 
@@ -389,18 +388,14 @@ export default function JourneyTimelinePage() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 pt-8 sm:pt-12 relative z-10">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 pt-6 sm:pt-8 relative z-10">
         {/* Page Hero Banner */}
-        <div className="text-left mb-12 sm:mb-16 border-b-2 border-[#09090B] pb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#D2E823] border-2 border-[#09090B] rounded-full text-xs font-mono-brutal font-bold uppercase tracking-wider mb-4 shadow-[2px_2px_0px_0px_#09090B]">
-            <Compass className="w-3.5 h-3.5" />
-            <span>CURRICULUM TREE // 5 STAGES</span>
-          </div>
-          <h1 className="font-heading text-4xl sm:text-6xl md:text-7xl text-[#09090B] tracking-tighter leading-none mb-4">
+        <div className="text-left mb-10 sm:mb-14 border-b-2 border-[#09090B] pb-6 sm:pb-8">
+          <h1 className="font-heading text-4xl sm:text-6xl md:text-7xl text-[#09090B] tracking-tighter leading-none mb-3 sm:mb-4">
             GITWORLD JOURNEY
           </h1>
           <p className="text-sm sm:text-base text-[#09090B]/80 max-w-2xl font-medium leading-relaxed">
-            Scroll down the orthogonal timeline to advance through cryptographic Git concepts. Click any unlocked stage to launch its interactive terminal sandbox.
+            Scroll down to look through various Git concepts. Click any unlocked stage to launch the sandbox learning area
           </p>
         </div>
 
@@ -513,7 +508,7 @@ export default function JourneyTimelinePage() {
             <div className="flex justify-center mb-4">
               <div className="px-4 py-1.5 bg-[#09090B] text-[#D2E823] font-mono-brutal text-xs font-bold rounded-full border-2 border-[#09090B] shadow-[2px_2px_0px_0px_#09090B] flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-[#D2E823] animate-ping" />
-                <span>GENESIS TRUNK: refs/heads/main</span>
+                <span>Lets begin learning!</span>
               </div>
             </div>
 
