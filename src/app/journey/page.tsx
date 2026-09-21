@@ -390,13 +390,14 @@ export default function JourneyTimelinePage() {
       {/* Main Container */}
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 pt-6 sm:pt-8 relative z-10">
         {/* Page Hero Banner */}
-        <div className="text-left mb-10 sm:mb-14 border-b-2 border-[#09090B] pb-6 sm:pb-8">
-          <h1 className="font-heading text-4xl sm:text-6xl md:text-7xl text-[#09090B] tracking-tighter leading-none mb-3 sm:mb-4">
+        <div className="text-left">
+          <h1 className="font-heading text-4xl sm:text-6xl md:text-7xl text-[#09090B] tracking-tighter leading-none">
             GITWORLD JOURNEY
           </h1>
-          <p className="text-sm sm:text-base text-[#09090B]/80 max-w-2xl font-medium leading-relaxed">
+          <p className="text-xl md:text-2xl text-[#09090B]/80 max-w-3xl font-medium leading-relaxed md:leading-loose my-6">
             Scroll down to look through various Git concepts. Click any unlocked stage to launch the sandbox learning area
           </p>
+          <div className="border-b-2 border-[#09090B] mb-12" />
         </div>
 
         {/* Locked Node Feedback Toast */}
