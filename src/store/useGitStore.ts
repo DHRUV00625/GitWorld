@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+export interface CommitData {
+  id: string;
+  hash: string;
+  message: string;
+  isNew?: boolean;
+}
+
 export interface GitStoreState {
   userId: string | null;
   repoName: string;
@@ -10,6 +17,7 @@ export interface GitStoreState {
   completedTopics: string[];
   completed_topics: string[];
   completedCommands: string[];
+  commits: CommitData[];
   setUserId: (userId: string | null) => void;
   setRepoName: (name: string) => void;
   setRepo_name: (name: string) => void;
@@ -17,6 +25,7 @@ export interface GitStoreState {
   setCompletedTopics: (topics: string[]) => void;
   addCompletedTopic: (topicId: string) => void;
   addCompletedCommand: (command: string) => void;
+  addCommit: (message: string, hash: string) => void;
   initializeFromUserProgress: (record: {
     userId?: string | null;
     id?: string;
@@ -27,6 +36,7 @@ export interface GitStoreState {
     repoName?: string;
     current_branch_name?: string;
     currentBranch?: string;
+    commits?: CommitData[];
   } | any) => void;
   resetGitState: () => void;
   logout: (supabase?: any, router?: any) => Promise<void>;
@@ -43,6 +53,7 @@ export const useGitStore = create<GitStoreState>()(
       completedTopics: [],
       completed_topics: [],
       completedCommands: [],
+      commits: [{ id: 'c0', hash: '9a01fd2', message: 'genesis snapshot' }],
       setUserId: (userId: string | null) => set({ userId }),
       setRepoName: (name: string) => {
         const clean = name ? name.trim() : '';
@@ -70,11 +81,21 @@ export const useGitStore = create<GitStoreState>()(
             ? state.completedCommands
             : [...state.completedCommands, command],
         })),
+      addCommit: (message: string, hash: string) =>
+        set((state) => ({
+          commits: [
+            ...state.commits.map((c) => ({ ...c, isNew: false })),
+            { id: `c${state.commits.length}`, hash, message, isNew: true },
+          ],
+        })),
       initializeFromUserProgress: (record: any) => {
         const uid = record?.userId || record?.id || record?.user_id || null;
         const topics = record?.completed_topics || record?.completedTopics || ['init'];
         const repo = record?.repo_name || record?.repoName || '';
         const branch = record?.current_branch_name || record?.currentBranch || 'main';
+        const commits = Array.isArray(record?.commits) && record.commits.length > 0
+          ? record.commits
+          : [{ id: 'c0', hash: '9a01fd2', message: 'genesis snapshot' }];
         set({
           userId: uid,
           repoName: repo,
@@ -83,6 +104,7 @@ export const useGitStore = create<GitStoreState>()(
           current_branch_name: branch,
           completedTopics: topics,
           completed_topics: topics,
+          commits,
         });
       },
       resetGitState: () =>
@@ -95,6 +117,7 @@ export const useGitStore = create<GitStoreState>()(
           completedTopics: [],
           completed_topics: [],
           completedCommands: [],
+          commits: [{ id: 'c0', hash: '9a01fd2', message: 'genesis snapshot' }],
         }),
       logout: async (supabase?: any, router?: any) => {
         await logoutUser(supabase, router);

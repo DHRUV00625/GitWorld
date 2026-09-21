@@ -233,18 +233,17 @@ export default function TimelineGraph({
                         y={nodeY + 4}
                         className="font-mono-brutal font-bold text-[12px] fill-[#09090B]"
                       >
-                        {commit.id} [{commitMsg}]
+                        c{idx} [{commitMsg}]
                       </text>
 
-                      {/* Secondary status label */}
+                      {/* Mock hash sub-label */}
                       <text
                         x={lineStartX + 24}
                         y={nodeY + 18}
-                        className="font-mono-brutal text-[10px] font-bold fill-[#09090B]/60 uppercase"
+                        className="font-mono-brutal text-[10px] font-bold fill-[#09090B]/50 uppercase"
                       >
-                        {isLastCommit
-                          ? `HEAD -> ${mainBranchName} \u2022 trunk snapshot`
-                          : commit.secondaryLabel || (idx === 0 ? 'root genesis snapshot' : 'parent snapshot')}
+                        SHA: {commit.hash || (idx === 0 ? '9a01fd2' : 'e89f41b')}
+                        {isLastCommit ? ` • HEAD -> ${mainBranchName}` : ''}
                       </text>
                     </g>
                   );

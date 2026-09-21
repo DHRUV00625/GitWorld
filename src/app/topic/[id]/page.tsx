@@ -302,9 +302,8 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
       };
     }
 
-    // Regex check for ^git commit -m "(.+)"$ (also supporting matching single quotes)
-    const commitRegex = /^git\s+commit\s+-m\s+(["'])(.+?)\1$/i;
-    const match = trimmed.match(commitRegex);
+    // Strict capture of message inside quotes: ^git commit -m "([^"]+)"$ (also supporting single quotes)
+    const match = trimmed.match(/^git\s+commit\s+-m\s+"([^"]+)"$/) || trimmed.match(/^git\s+commit\s+-m\s+'([^']+)'$/);
 
     if (!match) {
       // Check specific syntax errors to show targeted feedback
@@ -341,7 +340,7 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
       };
     }
 
-    const extractedMessage = match[2].trim();
+    const extractedMessage = match[1].trim();
     if (!extractedMessage) {
       return {
         isValid: false,
@@ -452,6 +451,8 @@ export default function TopicDetailPage() {
     completedCommands,
     addCompletedTopic,
     completedTopics,
+    commits,
+    addCommit,
   } = useGitStore();
 
   const activeRepo = repo_name || repoName || '';
@@ -469,9 +470,6 @@ export default function TopicDetailPage() {
   const [createdBranchName, setCreatedBranchName] = useState<string>('');
   const [isJustInitialized, setIsJustInitialized] = useState<boolean>(false);
   const [simulatedRepoName, setSimulatedRepoName] = useState<string>(activeRepo);
-  const [commits, setCommits] = useState<CommitNode[]>([
-    { id: 'c0', message: 'genesis snapshot', isNew: false },
-  ]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
@@ -538,20 +536,6 @@ export default function TopicDetailPage() {
       setSimulatedRepoName(activeRepo);
     }
 
-    // Hydrate commits based on topic and completion status
-    if (topic.id === 'init') {
-      setCommits([{ id: 'c0', message: 'genesis snapshot', isNew: false }]);
-    } else if (topic.id === 'commit') {
-      if (isCompleted) {
-        setCommits([
-          { id: 'c0', message: 'genesis snapshot', isNew: false },
-          { id: 'c1', message: 'feat: initial commit', isNew: false },
-        ]);
-      } else {
-        setCommits([{ id: 'c0', message: 'genesis snapshot', isNew: false }]);
-      }
-    }
-
     setTimeout(() => {
       inputRef.current?.focus();
     }, 150);
@@ -611,11 +595,9 @@ export default function TopicDetailPage() {
       updatedRepo = customName;
       setIsJustInitialized(true);
     } else if (topic.id === 'commit') {
-      const extractedMessage = validation.capturedArg || 'feat: initial commit';
-      setCommits((prev) => [
-        ...prev.map((c) => ({ ...c, isNew: false })),
-        { id: 'c1', message: extractedMessage, isNew: true },
-      ]);
+      const extractedMessage = validation.capturedArg || 'initial snapshot';
+      const mockHash = Math.random().toString(16).slice(2, 9);
+      addCommit(extractedMessage, mockHash);
     } else if (topic.id === 'branching') {
       const customBranch = validation.capturedArg || 'feature/quantum-leap';
       setCurrentBranch(customBranch);

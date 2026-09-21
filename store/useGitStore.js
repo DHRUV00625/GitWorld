@@ -12,6 +12,7 @@ export const useGitStore = create()(
       completedTopics: [],
       completed_topics: [],
       completedCommands: [],
+      commits: [{ id: 'c0', hash: '9a01fd2', message: 'genesis snapshot' }],
       setUserId: (userId) => set({ userId }),
       setRepoName: (name) => {
         const clean = name ? name.trim() : '';
@@ -39,11 +40,21 @@ export const useGitStore = create()(
             ? state.completedCommands
             : [...state.completedCommands, command],
         })),
+      addCommit: (message, hash) =>
+        set((state) => ({
+          commits: [
+            ...state.commits.map((c) => ({ ...c, isNew: false })),
+            { id: `c${state.commits.length}`, hash, message, isNew: true },
+          ],
+        })),
       initializeFromUserProgress: (record) => {
         const uid = record?.userId || record?.id || record?.user_id || null;
         const topics = record?.completed_topics || record?.completedTopics || ['init'];
         const repo = record?.repo_name || record?.repoName || '';
         const branch = record?.current_branch_name || record?.currentBranch || 'main';
+        const commits = Array.isArray(record?.commits) && record.commits.length > 0
+          ? record.commits
+          : [{ id: 'c0', hash: '9a01fd2', message: 'genesis snapshot' }];
         set({
           userId: uid,
           repoName: repo,
@@ -52,6 +63,7 @@ export const useGitStore = create()(
           current_branch_name: branch,
           completedTopics: topics,
           completed_topics: topics,
+          commits,
         });
       },
       resetGitState: () =>
@@ -64,6 +76,7 @@ export const useGitStore = create()(
           completedTopics: [],
           completed_topics: [],
           completedCommands: [],
+          commits: [{ id: 'c0', hash: '9a01fd2', message: 'genesis snapshot' }],
         }),
       logout: async (supabase, router) => {
         await logoutUser(supabase, router);
