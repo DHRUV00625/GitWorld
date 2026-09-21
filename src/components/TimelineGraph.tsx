@@ -6,7 +6,9 @@ import { GitBranch, FolderGit2 } from 'lucide-react';
 
 export interface CommitNode {
   id: string; // e.g. 'c0', 'c1'
-  label: string; // e.g. 'genesis snapshot'
+  message?: string; // commit message
+  label?: string; // backwards compatibility alias for message
+  isNew?: boolean;
   hash?: string;
   secondaryLabel?: string;
 }
@@ -22,28 +24,28 @@ export interface TimelineGraphProps {
 export default function TimelineGraph({
   repoName = '',
   isInitialized = false,
-  commits = [{ id: 'c0', label: 'genesis snapshot' }],
+  commits = [{ id: 'c0', message: 'genesis snapshot', isNew: false }],
   mainBranchName = 'main',
   stageName = 'TIMELINE',
 }: TimelineGraphProps) {
   const cleanRepoName = (repoName || '').trim();
   const hasActiveRepo = Boolean(cleanRepoName) && isInitialized;
 
-  // Track transitions: animation only triggers when transitioning from empty to initialized
+  // Track initial transition from empty to populated
   const prevRepoNameRef = useRef<string>(cleanRepoName);
-  const [hasAnimated, setHasAnimated] = useState<boolean>(false);
+  const [hasAnimatedGenesis, setHasAnimatedGenesis] = useState<boolean>(false);
 
-  const isTransitioning = (!prevRepoNameRef.current && hasActiveRepo);
-  const shouldAnimate = isTransitioning && !hasAnimated;
+  const isTransitioningFromEmpty = (!prevRepoNameRef.current && hasActiveRepo);
+  const shouldAnimateGenesis = isTransitioningFromEmpty && !hasAnimatedGenesis;
 
   useEffect(() => {
-    if (shouldAnimate) {
+    if (shouldAnimateGenesis) {
       const timer = setTimeout(() => {
-        setHasAnimated(true);
+        setHasAnimatedGenesis(true);
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [shouldAnimate]);
+  }, [shouldAnimateGenesis]);
 
   useEffect(() => {
     prevRepoNameRef.current = cleanRepoName;
@@ -51,18 +53,24 @@ export default function TimelineGraph({
 
   const commitList = commits && commits.length > 0
     ? commits
-    : [{ id: 'c0', label: 'genesis snapshot' }];
+    : [{ id: 'c0', message: 'genesis snapshot', isNew: false }];
 
-  // Badge layout metrics
+  const commitCount = commitList.length;
+  const hasNewCommit = commitList.some((c) => c.isNew);
+
+  // Dynamic layout metrics based on commit count
+  const startY = 45;
+  const nodeSpacing = 80;
+  const lineStartX = 100;
+  const lineStartY = 25;
+  const lineEndY = startY + (commitCount - 1) * nodeSpacing + 35;
+  const badgeY = lineEndY + 12;
+  const svgHeight = Math.max(240, 100 + commitCount * 80);
+
+  // Badge width calculation based on repo name
   const displayRepoName = cleanRepoName || 'gitworld-project';
   const repoNameTextLength = Math.max(displayRepoName.length * 8.5, 90);
   const badgeWidth = Math.max(220, repoNameTextLength + 100);
-
-  // Dynamic layout coordinates for commit nodes
-  const startY = 42;
-  const lineStartY = 25;
-  const lineEndY = 185;
-  const lineX = 100;
 
   return (
     <div className="w-full bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] p-5 sm:p-6 shadow-[4px_4px_0px_0px_#09090B] mt-6 relative select-none">
@@ -134,7 +142,7 @@ export default function TimelineGraph({
           ) : (
             /* ============================================================ */
             /* POPULATED STATE: Animated SVG with 4px Alert Red Line,       */
-            /* Square Commit Nodes, and Bottom Badges                       */
+            /* Dynamic Line Extension, Square Commit Nodes, and Base Badges */
             /* ============================================================ */
             <motion.div
               key="timeline-populated"
@@ -144,8 +152,9 @@ export default function TimelineGraph({
               className="relative w-full"
             >
               <motion.svg
-                className="w-full h-[240px] min-w-[460px]"
-                viewBox="0 0 520 240"
+                className="w-full min-w-[460px] transition-all"
+                style={{ height: `${svgHeight}px` }}
+                viewBox={`0 0 520 ${svgHeight}`}
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -162,25 +171,33 @@ export default function TimelineGraph({
                 </defs>
 
                 {/* Blueprint background grid */}
-                <rect width="520" height="240" fill="url(#timeline-grid-pattern)" />
+                <rect width="520" height={svgHeight} fill="url(#timeline-grid-pattern)" />
 
-                {/* CENTRAL 4px #FF3333 VERTICAL LINE */}
+                {/* ============================================================ */}
+                {/* CENTRAL 4px #FF3333 VERTICAL LINE WITH DYNAMIC EXTENSION    */}
+                {/* ============================================================ */}
                 <motion.line
-                  x1={lineX}
+                  x1={lineStartX}
                   y1={lineStartY}
-                  x2={lineX}
+                  x2={lineStartX}
                   y2={lineEndY}
                   stroke="#FF3333"
                   strokeWidth="4"
                   strokeLinecap="square"
-                  initial={{ pathLength: shouldAnimate ? 0 : 1 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 0.75, ease: [0.77, 0, 0.175, 1] }}
+                  initial={
+                    shouldAnimateGenesis
+                      ? { pathLength: 0 }
+                      : hasNewCommit && commitCount > 1
+                      ? { y2: lineEndY - nodeSpacing }
+                      : { y2: lineEndY }
+                  }
+                  animate={{ pathLength: 1, y2: lineEndY }}
+                  transition={{ duration: 0.65, ease: [0.77, 0, 0.175, 1] }}
                 />
 
-                {/* Top Origin Dot */}
+                {/* Top Origin Indicator Dot */}
                 <rect
-                  x={lineX - 4}
+                  x={lineStartX - 4}
                   y={lineStartY - 4}
                   width="8"
                   height="8"
@@ -189,65 +206,96 @@ export default function TimelineGraph({
                   strokeWidth="1.5"
                 />
 
-                {/* COMMIT NODES (Mapped from commits array) */}
+                {/* ============================================================ */}
+                {/* COMMIT NODES (Mapped from commits array)                    */}
+                {/* ============================================================ */}
                 {commitList.map((commit, idx) => {
-                  const nodeSpacing = commitList.length > 1 ? (lineEndY - startY - 40) / (commitList.length - 1) : 0;
                   const nodeY = startY + idx * nodeSpacing;
-                  const nodeDelay = shouldAnimate ? 0.45 + idx * 0.15 : 0;
+                  const commitMsg = commit.message || commit.label || 'snapshot';
+                  const isLastCommit = idx === commitCount - 1;
 
-                  return (
+                  const NodeContent = (
                     <g key={commit.id || idx}>
-                      {/* Square Black Commit Node */}
-                      <motion.rect
-                        x={lineX - 8}
+                      {/* Black square commit node #09090B with #FF3333 border */}
+                      <rect
+                        x={lineStartX - 8}
                         y={nodeY - 8}
                         width="16"
                         height="16"
                         fill="#09090B"
                         stroke="#FF3333"
                         strokeWidth="2"
-                        initial={{ opacity: shouldAnimate ? 0 : 1, scale: shouldAnimate ? 0.4 : 1 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: nodeDelay, duration: 0.25 }}
                       />
 
-                      {/* Commit Text Label */}
-                      <motion.g
-                        initial={{ opacity: shouldAnimate ? 0 : 1, x: shouldAnimate ? -8 : 0 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: nodeDelay, duration: 0.25 }}
+                      {/* Text Labels: commit ID and message */}
+                      <text
+                        x={lineStartX + 24}
+                        y={nodeY + 4}
+                        className="font-mono-brutal font-bold text-[12px] fill-[#09090B]"
                       >
-                        <text
-                          x={lineX + 24}
-                          y={nodeY + 4}
-                          className="font-mono-brutal font-bold text-[12px] fill-[#09090B]"
-                        >
-                          {commit.id} [{commit.label}]
-                        </text>
-                        <text
-                          x={lineX + 24}
-                          y={nodeY + 18}
-                          className="font-mono-brutal text-[10px] font-bold fill-[#09090B]/60 uppercase"
-                        >
-                          {idx === commitList.length - 1
-                            ? `HEAD -> ${mainBranchName} • tip snapshot`
-                            : commit.secondaryLabel || 'ancestor snapshot'}
-                        </text>
-                      </motion.g>
+                        {commit.id} [{commitMsg}]
+                      </text>
+
+                      {/* Secondary status label */}
+                      <text
+                        x={lineStartX + 24}
+                        y={nodeY + 18}
+                        className="font-mono-brutal text-[10px] font-bold fill-[#09090B]/60 uppercase"
+                      >
+                        {isLastCommit
+                          ? `HEAD -> ${mainBranchName} \u2022 trunk snapshot`
+                          : commit.secondaryLabel || (idx === 0 ? 'root genesis snapshot' : 'parent snapshot')}
+                      </text>
                     </g>
                   );
+
+                  if (commit.isNew) {
+                    return (
+                      <motion.g
+                        key={commit.id || idx}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, delay: 0.25 }}
+                      >
+                        {NodeContent}
+                      </motion.g>
+                    );
+                  }
+
+                  if (shouldAnimateGenesis) {
+                    return (
+                      <motion.g
+                        key={commit.id || idx}
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.5, duration: 0.3 }}
+                      >
+                        {NodeContent}
+                      </motion.g>
+                    );
+                  }
+
+                  return <g key={commit.id || idx}>{NodeContent}</g>;
                 })}
 
-                {/* NEO-BRUTALIST BADGES AT THE BOTTOM */}
+                {/* ============================================================ */}
+                {/* NEO-BRUTALIST BADGES AT THE BOTTOM OF THE LINE              */}
+                {/* ============================================================ */}
                 <motion.g
-                  initial={{ opacity: shouldAnimate ? 0 : 1, y: shouldAnimate ? 15 : 0 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: shouldAnimate ? 0.7 : 0, duration: 0.35, ease: 'easeOut' }}
+                  initial={
+                    shouldAnimateGenesis
+                      ? { opacity: 0, y: badgeY + 15 }
+                      : hasNewCommit
+                      ? { y: badgeY - nodeSpacing }
+                      : { y: badgeY }
+                  }
+                  animate={{ opacity: 1, y: badgeY }}
+                  transition={{ duration: 0.5, ease: 'easeOut', delay: shouldAnimateGenesis ? 0.7 : 0.2 }}
                 >
-                  {/* Hard Shadow */}
+                  {/* Hard Shadow for badge */}
                   <rect
                     x="33"
-                    y="173"
+                    y="3"
                     width={badgeWidth}
                     height="36"
                     rx="6"
@@ -257,7 +305,7 @@ export default function TimelineGraph({
                   {/* Badge Base Card */}
                   <rect
                     x="30"
-                    y="170"
+                    y="0"
                     width={badgeWidth}
                     height="36"
                     rx="6"
@@ -269,7 +317,7 @@ export default function TimelineGraph({
                   {/* Folder Icon Box */}
                   <rect
                     x="36"
-                    y="176"
+                    y="6"
                     width="24"
                     height="24"
                     rx="4"
@@ -277,7 +325,7 @@ export default function TimelineGraph({
                   />
                   <text
                     x="48"
-                    y="192"
+                    y="22"
                     textAnchor="middle"
                     className="font-mono-brutal font-bold text-[11px] fill-[#D2E823]"
                   >
@@ -287,14 +335,14 @@ export default function TimelineGraph({
                   {/* Custom Repo Name */}
                   <text
                     x="68"
-                    y="193"
+                    y="23"
                     className="font-mono-brutal font-bold text-xs fill-[#09090B]"
                   >
                     {displayRepoName}
                   </text>
 
                   {/* Main Branch Pill inside badge */}
-                  <g transform={`translate(${30 + badgeWidth - 68}, 176)`}>
+                  <g transform={`translate(${30 + badgeWidth - 68}, 6)`}>
                     <rect
                       width="60"
                       height="24"
@@ -336,7 +384,7 @@ export default function TimelineGraph({
           )}
         </div>
         <div>
-          <span className="font-bold text-[#09090B]">COMMITS:</span> {hasActiveRepo ? `${commitList.length} snapshot(s)` : '0 snapshot(s)'}
+          <span className="font-bold text-[#09090B]">COMMITS:</span> {hasActiveRepo ? `${commitCount} snapshot(s)` : '0 snapshot(s)'}
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@ import NoiseOverlay from '@/components/NoiseOverlay';
 import CustomCursor from '@/components/CustomCursor';
 import BranchingVisualizer from '@/components/BranchingVisualizer';
 import InitVisualizer from '@/components/InitVisualizer';
-import TimelineGraph from '@/components/TimelineGraph';
+import TimelineGraph, { CommitNode } from '@/components/TimelineGraph';
 import {
   ArrowLeft,
   Terminal as TerminalIcon,
@@ -80,7 +80,7 @@ const TOPIC_REGISTRY: Record<string, TopicMeta> = {
     stageName: 'COMMIT',
     title: 'IMMUTABLE SNAPSHOTS',
     xp: 150,
-    expectedPattern: /^git\s+commit(?:\s+.*)?$/,
+    expectedPattern: /^git\s+commit\s+-m\s+["'](.+?)["']$/i,
     hint: 'git commit -m "feat: initial commit"',
     theory: {
       whatItIs:
@@ -286,16 +286,70 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
       };
     }
 
-    // Check for commit message flag
-    const hasFlag = tokens.some((t) => t === '-m' || t === '-am' || t.startsWith('-m'));
-    if (!hasFlag && tokens.length > 2) {
+    if (tokens.length <= 2) {
       return {
         isValid: false,
-        errorMessage: `Missing commit flag: In Git, commit messages require the '-m' flag. Example: '${topic.hint}'`,
+        errorMessage: `Missing commit flag and message. Correct syntax: git commit -m "your message" (e.g., '${topic.hint}').`,
       };
     }
 
-    return { isValid: true };
+    // Check if -m flag is missing
+    const hasMFlag = tokens.some((t) => t === '-m' || t.startsWith('-m'));
+    if (!hasMFlag) {
+      return {
+        isValid: false,
+        errorMessage: `Missing '-m' flag. In Git, specify your snapshot note with -m: git commit -m "your message".`,
+      };
+    }
+
+    // Regex check for ^git commit -m "(.+)"$ (also supporting matching single quotes)
+    const commitRegex = /^git\s+commit\s+-m\s+(["'])(.+?)\1$/i;
+    const match = trimmed.match(commitRegex);
+
+    if (!match) {
+      // Check specific syntax errors to show targeted feedback
+      const afterM = trimmed.split(/\s+-m\s*/i)[1] || '';
+      if (!afterM) {
+        return {
+          isValid: false,
+          errorMessage: `Missing commit message after '-m'. Please provide a message in quotes, e.g. '${topic.hint}'.`,
+        };
+      }
+      if (afterM === '""' || afterM === "''") {
+        return {
+          isValid: false,
+          errorMessage: `Empty commit message. Git requires a non-empty snapshot description: '${topic.hint}'.`,
+        };
+      }
+      const startsWithQuote = afterM.startsWith('"') || afterM.startsWith("'");
+      const endsWithQuote = afterM.endsWith('"') || afterM.endsWith("'");
+      if ((startsWithQuote && !endsWithQuote) || (!startsWithQuote && endsWithQuote)) {
+        return {
+          isValid: false,
+          errorMessage: `Unclosed quotation marks detected in commit message. Enclose your message in matching quotes, e.g. '${topic.hint}'.`,
+        };
+      }
+      if (!startsWithQuote && !endsWithQuote) {
+        return {
+          isValid: false,
+          errorMessage: `Missing quotation marks around commit message. In Git, wrap your message in quotes: git commit -m "your message".`,
+        };
+      }
+      return {
+        isValid: false,
+        errorMessage: `Invalid commit syntax. Expected format: '${topic.hint}'.`,
+      };
+    }
+
+    const extractedMessage = match[2].trim();
+    if (!extractedMessage) {
+      return {
+        isValid: false,
+        errorMessage: `Commit message cannot be blank. Example: '${topic.hint}'.`,
+      };
+    }
+
+    return { isValid: true, capturedArg: extractedMessage };
   }
 
   if (topic.id === 'branching') {
@@ -415,6 +469,9 @@ export default function TopicDetailPage() {
   const [createdBranchName, setCreatedBranchName] = useState<string>('');
   const [isJustInitialized, setIsJustInitialized] = useState<boolean>(false);
   const [simulatedRepoName, setSimulatedRepoName] = useState<string>(activeRepo);
+  const [commits, setCommits] = useState<CommitNode[]>([
+    { id: 'c0', message: 'genesis snapshot', isNew: false },
+  ]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
@@ -477,10 +534,28 @@ export default function TopicDetailPage() {
     }
     setIsJustInitialized(false);
 
+    if (activeRepo) {
+      setSimulatedRepoName(activeRepo);
+    }
+
+    // Hydrate commits based on topic and completion status
+    if (topic.id === 'init') {
+      setCommits([{ id: 'c0', message: 'genesis snapshot', isNew: false }]);
+    } else if (topic.id === 'commit') {
+      if (isCompleted) {
+        setCommits([
+          { id: 'c0', message: 'genesis snapshot', isNew: false },
+          { id: 'c1', message: 'feat: initial commit', isNew: false },
+        ]);
+      } else {
+        setCommits([{ id: 'c0', message: 'genesis snapshot', isNew: false }]);
+      }
+    }
+
     setTimeout(() => {
       inputRef.current?.focus();
     }, 150);
-  }, [topic.id, topic.stageNum, topic.title, topic.hint, completedTopics]);
+  }, [topic.id, topic.stageNum, topic.title, topic.hint, completedTopics, activeRepo]);
 
   // Auto-scroll terminal to bottom
   useEffect(() => {
@@ -535,6 +610,12 @@ export default function TopicDetailPage() {
       setSimulatedRepoName(customName);
       updatedRepo = customName;
       setIsJustInitialized(true);
+    } else if (topic.id === 'commit') {
+      const extractedMessage = validation.capturedArg || 'feat: initial commit';
+      setCommits((prev) => [
+        ...prev.map((c) => ({ ...c, isNew: false })),
+        { id: 'c1', message: extractedMessage, isNew: true },
+      ]);
     } else if (topic.id === 'branching') {
       const customBranch = validation.capturedArg || 'feature/quantum-leap';
       setCurrentBranch(customBranch);
@@ -672,7 +753,7 @@ export default function TopicDetailPage() {
 
           <div className="flex items-center gap-2">
             <span className="font-mono-brutal text-xs font-bold bg-white border-2 border-[#09090B] px-3 py-1.5 rounded-[8px] shadow-[2px_2px_0px_0px_#09090B]">
-              REPO: ~/{simulatedRepoName || activeRepo || '[UNINITIALIZED]'}
+              REPO: ~/{repo_name || repoName || simulatedRepoName || (topic.id === 'init' ? '[UNINITIALIZED]' : 'gitworld-project')}
             </span>
           </div>
         </div>
@@ -924,11 +1005,11 @@ export default function TopicDetailPage() {
             {/* VISUAL TIMELINE: Below Terminal (TimelineGraph)           */}
             {/* ========================================================= */}
             <div>
-              {topic.id === 'init' ? (
+              {topic.id === 'init' || topic.id === 'commit' ? (
                 <TimelineGraph
-                  repoName={simulatedRepoName || activeRepo}
-                  isInitialized={Boolean(simulatedRepoName || activeRepo)}
-                  commits={[{ id: 'c0', label: 'genesis snapshot' }]}
+                  commits={commits}
+                  isInitialized={topic.id === 'commit' ? true : Boolean(simulatedRepoName || activeRepo)}
+                  repoName={repo_name || repoName || simulatedRepoName || (topic.id === 'commit' ? 'gitworld-project' : '')}
                   mainBranchName={currentBranch || 'main'}
                   stageName={topic.stageName}
                 />
