@@ -12,6 +12,7 @@ export interface GitStoreState {
   completedCommands: string[];
   setUserId: (userId: string | null) => void;
   setRepoName: (name: string) => void;
+  setRepo_name: (name: string) => void;
   setCurrentBranch: (branch: string) => void;
   setCompletedTopics: (topics: string[]) => void;
   addCompletedTopic: (topicId: string) => void;
@@ -44,6 +45,10 @@ export const useGitStore = create<GitStoreState>()(
       completedCommands: [],
       setUserId: (userId: string | null) => set({ userId }),
       setRepoName: (name: string) => {
+        const clean = name ? name.trim() : '';
+        set({ repoName: clean, repo_name: clean });
+      },
+      setRepo_name: (name: string) => {
         const clean = name ? name.trim() : '';
         set({ repoName: clean, repo_name: clean });
       },

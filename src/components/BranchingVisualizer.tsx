@@ -3,12 +3,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { GitBranch, GitCommit, Split } from 'lucide-react';
+import InitVisualizer from './InitVisualizer';
 
 interface BranchingVisualizerProps {
   isBranchCreated: boolean;
   currentBranch: string;
   mainBranchName?: string;
   stageName?: string;
+  repoName?: string;
+  isJustInitialized?: boolean;
 }
 
 export default function BranchingVisualizer({
@@ -16,7 +19,20 @@ export default function BranchingVisualizer({
   currentBranch,
   mainBranchName = 'main',
   stageName = 'BRANCHING',
+  repoName = '',
+  isJustInitialized = false,
 }: BranchingVisualizerProps) {
+  if (stageName === 'INIT' || stageName === '01') {
+    return (
+      <InitVisualizer
+        repoName={repoName}
+        isJustInitialized={isJustInitialized}
+        mainBranchName={mainBranchName}
+        stageName={stageName}
+      />
+    );
+  }
+
   const displayBranch = currentBranch && currentBranch !== 'main' ? currentBranch : 'feature/quantum-leap';
 
   return (

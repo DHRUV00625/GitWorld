@@ -17,6 +17,10 @@ export const useGitStore = create()(
         const clean = name ? name.trim() : '';
         set({ repoName: clean, repo_name: clean });
       },
+      setRepo_name: (name) => {
+        const clean = name ? name.trim() : '';
+        set({ repoName: clean, repo_name: clean });
+      },
       setCurrentBranch: (branch) => {
         const clean = branch ? branch.trim() : 'main';
         set({ currentBranch: clean, current_branch_name: clean });

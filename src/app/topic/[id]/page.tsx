@@ -9,6 +9,7 @@ import { createClient } from '@/utils/supabase/client';
 import NoiseOverlay from '@/components/NoiseOverlay';
 import CustomCursor from '@/components/CustomCursor';
 import BranchingVisualizer from '@/components/BranchingVisualizer';
+import InitVisualizer from '@/components/InitVisualizer';
 import {
   ArrowLeft,
   Terminal as TerminalIcon,
@@ -158,6 +159,18 @@ const TOPIC_REGISTRY: Record<string, TopicMeta> = {
   },
 };
 
+// Route aliases for /topic/1, /topic/01, etc.
+TOPIC_REGISTRY['1'] = TOPIC_REGISTRY['init'];
+TOPIC_REGISTRY['01'] = TOPIC_REGISTRY['init'];
+TOPIC_REGISTRY['2'] = TOPIC_REGISTRY['commit'];
+TOPIC_REGISTRY['02'] = TOPIC_REGISTRY['commit'];
+TOPIC_REGISTRY['3'] = TOPIC_REGISTRY['branching'];
+TOPIC_REGISTRY['03'] = TOPIC_REGISTRY['branching'];
+TOPIC_REGISTRY['4'] = TOPIC_REGISTRY['merging'];
+TOPIC_REGISTRY['04'] = TOPIC_REGISTRY['merging'];
+TOPIC_REGISTRY['5'] = TOPIC_REGISTRY['remote'];
+TOPIC_REGISTRY['05'] = TOPIC_REGISTRY['remote'];
+
 // Levenshtein distance for smart typo detection
 function getLevenshteinDistance(a: string, b: string): number {
   const matrix: number[][] = [];
@@ -236,7 +249,24 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
       };
     }
 
-    const customRepoName = tokens[2] || 'gitworld-project';
+    // Parse git init <repo-name> (regex ^git init ([\w-]+)$)
+    const initRegex = /^git\s+init(?:\s+([\w-]+))?$/i;
+    const match = trimmed.match(initRegex);
+
+    if (!match || !match[1]) {
+      if (tokens.length <= 2) {
+        return {
+          isValid: false,
+          errorMessage: `Missing repository name. Correct syntax: 'git init <repo-name>' (e.g., '${topic.hint}').`,
+        };
+      }
+      return {
+        isValid: false,
+        errorMessage: `Invalid repository name '${tokens[2]}'. Use letters, numbers, hyphens, or underscores (e.g., '${topic.hint}').`,
+      };
+    }
+
+    const customRepoName = match[1];
     return { isValid: true, capturedArg: customRepoName };
   }
 
@@ -359,6 +389,7 @@ export default function TopicDetailPage() {
   // Global store states
   const {
     repoName,
+    repo_name,
     setRepoName,
     currentBranch,
     setCurrentBranch,
@@ -367,6 +398,8 @@ export default function TopicDetailPage() {
     addCompletedTopic,
     completedTopics,
   } = useGitStore();
+
+  const activeRepo = repo_name || repoName || '';
 
   // Local UI states
   const [revealedCount, setRevealedCount] = useState<number>(1);
@@ -379,7 +412,8 @@ export default function TopicDetailPage() {
   const [showAnimation, setShowAnimation] = useState<boolean>(false);
   const [showSuccessBadge, setShowSuccessBadge] = useState<boolean>(false);
   const [createdBranchName, setCreatedBranchName] = useState<string>('');
-  const [simulatedRepoName, setSimulatedRepoName] = useState<string>(repoName || 'gitworld-project');
+  const [isJustInitialized, setIsJustInitialized] = useState<boolean>(false);
+  const [simulatedRepoName, setSimulatedRepoName] = useState<string>(activeRepo);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalEndRef = useRef<HTMLDivElement>(null);
@@ -440,6 +474,7 @@ export default function TopicDetailPage() {
       setShowAnimation(true);
       setShowSuccessBadge(true);
     }
+    setIsJustInitialized(false);
 
     setTimeout(() => {
       inputRef.current?.focus();
@@ -490,14 +525,15 @@ export default function TopicDetailPage() {
     setIsCommandLocked(true);
 
     // State persistence logic
-    let updatedRepo = repoName;
+    let updatedRepo = repoName || repo_name || '';
     let updatedBranch = currentBranch;
 
     if (topic.id === 'init') {
-      const customName = validation.capturedArg || 'gitworld-project';
+      const customName = validation.capturedArg || '';
       setRepoName(customName);
       setSimulatedRepoName(customName);
       updatedRepo = customName;
+      setIsJustInitialized(true);
     } else if (topic.id === 'branching') {
       const customBranch = validation.capturedArg || 'feature/quantum-leap';
       setCurrentBranch(customBranch);
@@ -548,14 +584,20 @@ export default function TopicDetailPage() {
 
       localStorage.setItem(
         'gitworld_progress',
-        JSON.stringify({ completed_topics: nextCompleted, xp: nextXp })
+        JSON.stringify({
+          completed_topics: nextCompleted,
+          xp: nextXp,
+          repo_name: updatedRepo || '',
+          current_branch_name: updatedBranch || 'main',
+        })
       );
 
-      if (authData?.user) {
+      const userId = authData?.user?.id || useGitStore.getState().userId;
+      if (userId) {
         await supabase.from('user_progress').upsert(
           {
-            id: authData.user.id,
-            user_id: authData.user.id,
+            id: userId,
+            user_id: userId,
             completed_topics: nextCompleted,
             xp: nextXp,
             repo_name: updatedRepo || '',
@@ -629,7 +671,7 @@ export default function TopicDetailPage() {
 
           <div className="flex items-center gap-2">
             <span className="font-mono-brutal text-xs font-bold bg-white border-2 border-[#09090B] px-3 py-1.5 rounded-[8px] shadow-[2px_2px_0px_0px_#09090B]">
-              REPO: ~/{simulatedRepoName}
+              REPO: ~/{simulatedRepoName || activeRepo || '[UNINITIALIZED]'}
             </span>
           </div>
         </div>
@@ -869,12 +911,23 @@ export default function TopicDetailPage() {
             {/* VISUAL TIMELINE: Below Terminal (4px Vertical Red Line)   */}
             {/* ========================================================= */}
             <div>
-              <BranchingVisualizer
-                isBranchCreated={showAnimation || isCommandLocked}
-                currentBranch={createdBranchName || currentBranch || 'feature/quantum-leap'}
-                mainBranchName="main"
-                stageName={topic.stageName}
-              />
+              {topic.id === 'init' ? (
+                <InitVisualizer
+                  repoName={simulatedRepoName || activeRepo}
+                  isJustInitialized={isJustInitialized}
+                  mainBranchName={currentBranch || 'main'}
+                  stageName={topic.stageName}
+                />
+              ) : (
+                <BranchingVisualizer
+                  isBranchCreated={showAnimation || isCommandLocked}
+                  currentBranch={createdBranchName || currentBranch || 'feature/quantum-leap'}
+                  mainBranchName="main"
+                  stageName={topic.stageName}
+                  repoName={simulatedRepoName || activeRepo}
+                  isJustInitialized={isJustInitialized}
+                />
+              )}
             </div>
 
             {/* QUEST COMPLETE Badge & Next/Back Buttons */}
