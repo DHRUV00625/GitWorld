@@ -4,6 +4,7 @@
 @theme {
   --font-heading: var(--font-dela), sans-serif;
   --font-body: var(--font-space), sans-serif;
+  --font-space: var(--font-space), 'Space Grotesk', sans-serif;
 }
 
 @layer base {
@@ -27,7 +28,7 @@
     letter-spacing: -0.05em;
   }
 
-  .font-body {
+  .font-body, .font-space {
     font-family: var(--font-space), 'Space Grotesk', sans-serif;
   }
 

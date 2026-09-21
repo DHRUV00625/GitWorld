@@ -505,8 +505,8 @@ export default function NeoBrutalistLandingPage() {
               </div>
             </div>
 
-            {/* 3 Columns: Platform, Topics, Social (7 cols total) */}
-            <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8 text-xs font-medium">
+            {/* 4 Columns: Platform, Topics, Social, Founder (7 cols total) */}
+            <div className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-8 text-xs font-medium">
               {/* Column 1: Platform */}
               <div className="space-y-4">
                 <span className="font-mono-brutal text-[11px] font-bold text-[#D2E823] uppercase tracking-wider block">
@@ -555,7 +555,7 @@ export default function NeoBrutalistLandingPage() {
               </div>
 
               {/* Column 3: Social */}
-              <div className="space-y-4 col-span-2 sm:col-span-1">
+              <div className="space-y-4">
                 <span className="font-mono-brutal text-[11px] font-bold text-[#D2E823] uppercase tracking-wider block">
                   // SOCIAL &amp; SOURCE
                 </span>
@@ -585,6 +585,27 @@ export default function NeoBrutalistLandingPage() {
                     <span className="hover:text-[#D2E823] transition-colors cursor-pointer">Discord Community</span>
                   </li>
                 </ul>
+              </div>
+
+              {/* Column 4: Founder */}
+              <div className="space-y-4">
+                <span className="font-mono-brutal text-[11px] font-bold text-[#D2E823] uppercase tracking-wider block">
+                  // FOUNDER
+                </span>
+                <div className="flex flex-col space-y-4">
+                  <p className="font-space text-sm text-gray-300">
+                    GitWorld founder - Dhruv Sharma
+                  </p>
+                  <p className="font-space text-sm text-gray-300">
+                    For any queries contact me at:<br />
+                    <a
+                      href="mailto:dhruv.official002@gmail.com"
+                      className="text-[#D2E823] hover:text-white hover:underline transition-colors mt-1 inline-block"
+                    >
+                      dhruv.official002@gmail.com
+                    </a>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
