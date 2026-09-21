@@ -474,7 +474,7 @@ export default function NeoBrutalistLandingPage() {
               </div>
 
               <p className="text-xs text-zinc-400 max-w-sm font-medium leading-relaxed">
-                The unapologetic Neo-Brutalist interactive platform designed to teach version control through hands-on visual sandboxes.
+                You gotta admit that the site looks cool lol
               </p>
 
               {/* Newsletter / Updates Signup Form */}
