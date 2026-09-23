@@ -71,10 +71,14 @@ export default function TimelineGraph({
   const lineStartY = 25;
   const lastCommitIndex = commitCount - 1;
   const lastY = startY + lastCommitIndex * nodeSpacing;
-  const lineEndY = startY + (commitCount - 1) * nodeSpacing + 35;
-  const badgeY = lineEndY + 12;
+  const lineEndY = shouldDrawBranch
+    ? lastY + 120
+    : startY + (commitCount - 1) * nodeSpacing + 35;
+  const badgeY = shouldDrawBranch
+    ? lastY + 120
+    : lineEndY + 12;
   const svgHeight = shouldDrawBranch
-    ? Math.max(300, lastY + 200)
+    ? Math.max(300, lastY + 250)
     : Math.max(240, 100 + commitCount * 80);
 
   // Badge widths and positioning
@@ -82,15 +86,13 @@ export default function TimelineGraph({
   const repoNameTextLength = Math.max(displayRepoName.length * 8.5, 90);
   const defaultBadgeWidth = Math.max(220, repoNameTextLength + 100);
 
-  const mainBadgeX = shouldDrawBranch ? 10 : 30;
-  const mainBadgeWidth = shouldDrawBranch
-    ? Math.max(120, Math.min(160, displayRepoName.length * 8 + 36))
-    : defaultBadgeWidth;
+  const mainBadgeWidth = shouldDrawBranch ? 100 : defaultBadgeWidth;
+  const mainBadgeX = shouldDrawBranch ? 50 - mainBadgeWidth / 2 : 30;
 
-  const branchBadgeWidth = Math.max(130, Math.min(200, (customBranch?.length || 0) * 8.5 + 40));
-  const branchBadgeHeight = 32;
-  const branchBadgeX = 150 - branchBadgeWidth / 2;
-  const branchBadgeY = lastY + 100 - branchBadgeHeight / 2;
+  const branchBadgeWidth = Math.max(130, Math.min(190, (customBranch?.length || 0) * 8.5 + 40));
+  const branchBadgeHeight = 36;
+  const branchBadgeX = 320 - branchBadgeWidth / 2;
+  const branchBadgeY = lastY + 120;
 
   return (
     <div className="w-full bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] p-5 sm:p-6 shadow-[4px_4px_0px_0px_#09090B] mt-6 relative select-none">
@@ -181,7 +183,8 @@ export default function TimelineGraph({
             >
               <motion.svg
                 className="w-full min-w-[460px] transition-all"
-                style={{ height: `${svgHeight}px` }}
+                height={svgHeight}
+                style={{ height: `${svgHeight}px`, minHeight: `${svgHeight}px` }}
                 viewBox={`0 0 520 ${svgHeight}`}
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -312,7 +315,7 @@ export default function TimelineGraph({
                   <g key="orthogonal-branch-group">
                     {/* Dark under-path for brutalist contrast */}
                     <motion.path
-                      d={`M 50 ${lastY} L 150 ${lastY} L 150 ${lastY + 100}`}
+                      d={`M 50 ${lastY} L 50 ${lastY + 55} L 320 ${lastY + 55} L 320 ${lastY + 120}`}
                       fill="none"
                       stroke="#09090B"
                       strokeWidth="6"
@@ -325,7 +328,7 @@ export default function TimelineGraph({
 
                     {/* Acid Yellow (#D2E823) 4px stroke */}
                     <motion.path
-                      d={`M 50 ${lastY} L 150 ${lastY} L 150 ${lastY + 100}`}
+                      d={`M 50 ${lastY} L 50 ${lastY + 55} L 320 ${lastY + 55} L 320 ${lastY + 120}`}
                       fill="none"
                       stroke="#D2E823"
                       strokeWidth="4"
@@ -336,10 +339,10 @@ export default function TimelineGraph({
                       transition={{ duration: 0.8, ease: "easeInOut" }}
                     />
 
-                    {/* Branch Divergence Corner Node */}
+                    {/* Branch Divergence Corner Node at turn (320, lastY + 55) */}
                     <motion.rect
-                      x={150 - 4}
-                      y={lastY - 4}
+                      x={320 - 4}
+                      y={lastY + 55 - 4}
                       width="8"
                       height="8"
                       fill="#D2E823"
@@ -408,19 +411,19 @@ export default function TimelineGraph({
 
                   {/* Custom Repo Name */}
                   <text
-                    x={mainBadgeX + 36}
+                    x={mainBadgeX + 34}
                     y="23"
                     className="font-mono-brutal font-bold text-xs fill-[#09090B]"
                   >
-                    {shouldDrawBranch && displayRepoName.length > 7
-                      ? `${displayRepoName.slice(0, 6)}…`
+                    {shouldDrawBranch
+                      ? (displayRepoName.length > 5 ? `${displayRepoName.slice(0, 4)}…` : displayRepoName)
                       : displayRepoName}
                   </text>
 
                   {/* Main Branch Pill inside badge */}
-                  <g transform={`translate(${mainBadgeX + mainBadgeWidth - 52}, 6)`}>
+                  <g transform={`translate(${mainBadgeX + mainBadgeWidth - (shouldDrawBranch ? 44 : 52)}, 6)`}>
                     <rect
-                      width="46"
+                      width={shouldDrawBranch ? 38 : 46}
                       height="24"
                       rx="4"
                       fill="#09090B"
@@ -428,14 +431,14 @@ export default function TimelineGraph({
                       strokeWidth="1"
                     />
                     <rect
-                      x="5"
+                      x={shouldDrawBranch ? 4 : 5}
                       y="8"
-                      width="8"
-                      height="8"
+                      width={shouldDrawBranch ? 6 : 8}
+                      height={shouldDrawBranch ? 6 : 8}
                       fill="#FF3333"
                     />
                     <text
-                      x="26"
+                      x={shouldDrawBranch ? 22 : 26}
                       y="16"
                       textAnchor="middle"
                       className="font-mono-brutal font-bold text-[10px] fill-[#FFFFFF]"
@@ -446,7 +449,7 @@ export default function TimelineGraph({
                 </motion.g>
 
                 {/* ============================================================ */}
-                {/* BRANCH BADGE (CENTERED AT END OF NEW PATH: x=150, y=lastY+100)*/}
+                {/* BRANCH BADGE (CENTERED AT END OF NEW PATH: x=320, y=lastY+120)*/}
                 {/* ============================================================ */}
                 {shouldDrawBranch && (
                   <motion.g
@@ -480,37 +483,37 @@ export default function TimelineGraph({
                     {/* Branch Icon Box */}
                     <rect
                       x={branchBadgeX + 6}
-                      y={branchBadgeY + 5}
-                      width="22"
-                      height="22"
+                      y={branchBadgeY + 6}
+                      width="24"
+                      height="24"
                       rx="4"
                       fill="#09090B"
                     />
                     <path
-                      d={`M ${branchBadgeX + 14} ${branchBadgeY + 9} v 12 M ${branchBadgeX + 14} ${branchBadgeY + 15} c 0 -3 3.5 -3.5 6.5 -3.5`}
+                      d={`M ${branchBadgeX + 15} ${branchBadgeY + 10} v 13 M ${branchBadgeX + 15} ${branchBadgeY + 17} c 0 -3 3.5 -3.5 6.5 -3.5`}
                       fill="none"
                       stroke="#D2E823"
                       strokeWidth="1.6"
                       strokeLinecap="round"
                     />
-                    <circle cx={branchBadgeX + 14} cy={branchBadgeY + 9} r="1.5" fill="#D2E823" />
-                    <circle cx={branchBadgeX + 20.5} cy={branchBadgeY + 11.5} r="1.5" fill="#D2E823" />
-                    <circle cx={branchBadgeX + 14} cy={branchBadgeY + 21} r="1.5" fill="#D2E823" />
+                    <circle cx={branchBadgeX + 15} cy={branchBadgeY + 10} r="1.5" fill="#D2E823" />
+                    <circle cx={branchBadgeX + 21.5} cy={branchBadgeY + 13.5} r="1.5" fill="#D2E823" />
+                    <circle cx={branchBadgeX + 15} cy={branchBadgeY + 23} r="1.5" fill="#D2E823" />
 
                     {/* Branch Name Text */}
                     <text
-                      x={branchBadgeX + 34}
-                      y={branchBadgeY + 20}
+                      x={branchBadgeX + 36}
+                      y={branchBadgeY + 22}
                       className="font-mono-brutal font-bold text-xs fill-[#09090B]"
                     >
                       {customBranch && customBranch.length > 13 ? `${customBranch.slice(0, 12)}…` : customBranch}
                     </text>
 
                     {/* Neo-brutalist BRANCH pill on the right */}
-                    <g transform={`translate(${branchBadgeX + branchBadgeWidth - 52}, ${branchBadgeY + 5})`}>
+                    <g transform={`translate(${branchBadgeX + branchBadgeWidth - 52}, ${branchBadgeY + 6})`}>
                       <rect
                         width="46"
-                        height="22"
+                        height="24"
                         rx="4"
                         fill="#09090B"
                         stroke="#09090B"
@@ -518,7 +521,7 @@ export default function TimelineGraph({
                       />
                       <text
                         x="23"
-                        y="15"
+                        y="16"
                         textAnchor="middle"
                         className="font-mono-brutal font-bold text-[9px] fill-[#D2E823]"
                       >
