@@ -8,7 +8,6 @@ import { useGitStore } from '@/store/useGitStore';
 import { createClient } from '@/utils/supabase/client';
 import NoiseOverlay from '@/components/NoiseOverlay';
 import CustomCursor from '@/components/CustomCursor';
-import BranchingVisualizer from '@/components/BranchingVisualizer';
 import InitVisualizer from '@/components/InitVisualizer';
 import TimelineGraph, { CommitNode } from '@/components/TimelineGraph';
 import {
@@ -929,7 +928,7 @@ export default function TopicDetailPage() {
                 )}
 
                 {/* Animated Graph Box on Success */}
-                {showAnimation && topic.id !== 'branching' && (
+                {showAnimation && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -937,13 +936,17 @@ export default function TopicDetailPage() {
                   >
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4" />
-                      <span className="font-bold uppercase">CRYPTOGRAPHIC DAG GENERATED</span>
+                      <span className="font-bold uppercase">
+                        {topic.id === 'branching' ? 'POINTER REF CREATED' : 'CRYPTOGRAPHIC DAG GENERATED'}
+                      </span>
                     </div>
                     <div className="text-[11px] text-[#A1A1AA]">
-                      &gt; Object: commit e89f41b2c7... (tree 9a01fd...)
+                      {topic.id === 'branching'
+                        ? `> Branch pointer: refs/heads/${currentBranch || createdBranchName || 'feature/quantum-leap'} -> HEAD`
+                        : `> Object: commit e89f41b2c7... (tree 9a01fd...)`}
                     </div>
                     <div className="text-[11px] text-[#A1A1AA]">
-                      &gt; Ref updated: refs/heads/{currentBranch || 'main'}
+                      &gt; Ref updated: refs/heads/{currentBranch || createdBranchName || 'main'}
                     </div>
                   </motion.div>
                 )}
@@ -987,24 +990,15 @@ export default function TopicDetailPage() {
             {/* VISUAL TIMELINE: Below Terminal (TimelineGraph)           */}
             {/* ========================================================= */}
             <div>
-              {topic.id === 'init' || topic.id === 'commit' ? (
-                <TimelineGraph
-                  commits={commits}
-                  isInitialized={topic.id === 'commit' ? true : Boolean(simulatedRepoName || activeRepo)}
-                  repoName={repo_name || repoName || simulatedRepoName || (topic.id === 'commit' ? 'gitworld-project' : '')}
-                  mainBranchName={currentBranch || 'main'}
-                  stageName={topic.stageName}
-                />
-              ) : (
-                <BranchingVisualizer
-                  isBranchCreated={showAnimation || isCommandLocked}
-                  currentBranch={createdBranchName || currentBranch || 'feature/quantum-leap'}
-                  mainBranchName="main"
-                  stageName={topic.stageName}
-                  repoName={simulatedRepoName || activeRepo}
-                  isJustInitialized={isJustInitialized}
-                />
-              )}
+              <TimelineGraph
+                commits={commits}
+                isInitialized={topic.id === 'init' ? Boolean(simulatedRepoName || activeRepo) : true}
+                repoName={repoName || repo_name || simulatedRepoName || (topic.id === 'init' ? '' : 'gitworld-project')}
+                repo_name={repo_name || repoName || simulatedRepoName || (topic.id === 'init' ? '' : 'gitworld-project')}
+                mainBranchName="main"
+                customBranch={topic.id === 'init' || topic.id === 'commit' ? 'main' : (currentBranch || createdBranchName)}
+                stageName={topic.stageName}
+              />
             </div>
 
             {/* QUEST COMPLETE Badge & Next/Back Buttons */}
