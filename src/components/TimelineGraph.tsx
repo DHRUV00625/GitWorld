@@ -216,7 +216,7 @@ export default function TimelineGraph({
               className="relative w-full"
             >
               <motion.svg
-                className="w-full h-auto overflow-visible"
+                className={`w-full h-auto overflow-visible ${!isRemoteMode ? 'max-w-md mx-auto' : ''}`}
                 viewBox={`0 0 400 ${Math.max(450, commits.length * 130)}`}
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
