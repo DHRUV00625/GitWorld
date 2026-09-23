@@ -18,6 +18,8 @@ export interface GitStoreState {
   completed_topics: string[];
   completedCommands: string[];
   commits: CommitData[];
+  isMerged: boolean;
+  setIsMerged: (val: boolean) => void;
   setUserId: (userId: string | null) => void;
   setRepoName: (name: string) => void;
   setRepo_name: (name: string) => void;
@@ -54,6 +56,8 @@ export const useGitStore = create<GitStoreState>()(
       completed_topics: [],
       completedCommands: [],
       commits: [{ id: 'c0', hash: '9a01fd2', message: 'genesis snapshot' }],
+      isMerged: false,
+      setIsMerged: (val: boolean) => set({ isMerged: val }),
       setUserId: (userId: string | null) => set({ userId }),
       setRepoName: (name: string) => {
         const clean = name ? name.trim() : '';
@@ -96,6 +100,7 @@ export const useGitStore = create<GitStoreState>()(
         const commits = Array.isArray(record?.commits) && record.commits.length > 0
           ? record.commits
           : [{ id: 'c0', hash: '9a01fd2', message: 'genesis snapshot' }];
+        const isMerged = Boolean(record?.isMerged);
         set({
           userId: uid,
           repoName: repo,
@@ -105,6 +110,7 @@ export const useGitStore = create<GitStoreState>()(
           completedTopics: topics,
           completed_topics: topics,
           commits,
+          isMerged,
         });
       },
       resetGitState: () =>
@@ -118,6 +124,7 @@ export const useGitStore = create<GitStoreState>()(
           completed_topics: [],
           completedCommands: [],
           commits: [{ id: 'c0', hash: '9a01fd2', message: 'genesis snapshot' }],
+          isMerged: false,
         }),
       logout: async (supabase?: any, router?: any) => {
         await logoutUser(supabase, router);

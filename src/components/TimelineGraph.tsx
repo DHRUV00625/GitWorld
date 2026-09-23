@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, FolderGit2 } from 'lucide-react';
 
+import { useGitStore } from '@/store/useGitStore';
+
 export interface CommitNode {
   id: string; // e.g. 'c0', 'c1'
   message?: string; // commit message
@@ -21,6 +23,7 @@ export interface TimelineGraphProps {
   mainBranchName?: string;
   customBranch?: string | null;
   stageName?: string;
+  isMerged?: boolean;
 }
 
 export default function TimelineGraph({
@@ -31,7 +34,11 @@ export default function TimelineGraph({
   mainBranchName = 'main',
   customBranch = null,
   stageName = 'TIMELINE',
+  isMerged: propIsMerged,
 }: TimelineGraphProps) {
+  const storeIsMerged = useGitStore((state) => state.isMerged);
+  const isMerged = Boolean(propIsMerged ?? storeIsMerged);
+
   const effectiveRepoName = (repoName || repo_name || '').trim();
   const cleanRepoName = effectiveRepoName;
   const hasActiveRepo = Boolean(cleanRepoName) && isInitialized;
@@ -64,20 +71,46 @@ export default function TimelineGraph({
   const commitCount = commitList.length;
   const hasNewCommit = commitList.some((c) => c.isNew);
 
-  // Dynamic layout metrics based on commit count
+  // Dynamic layout metrics based on commit count and merge state
+  const isBranchOrMerge = shouldDrawBranch || isMerged;
   const startY = 45;
   const nodeSpacing = 80;
   const lineStartX = 50;
-  const lineStartY = 25;
-  const lastCommitIndex = commitCount - 1;
-  const lastY = startY + lastCommitIndex * nodeSpacing;
-  const lineEndY = shouldDrawBranch
-    ? lastY + 120
+  const lineStartY = isBranchOrMerge ? 0 : 25;
+
+  // Node Y positioning helper:
+  // For branch/merge: c0=0, c1=100, c2(merge)=300
+  // For linear lessons (init, commit): strictly startY + idx * nodeSpacing
+  const getNodeY = (idx: number) => {
+    if (isBranchOrMerge) {
+      return idx >= 2 ? 300 : idx * 100;
+    }
+    return startY + idx * nodeSpacing;
+  };
+
+  // Divergence origin: for branch/merge it's c1 at Y=100; for linear it's the last commit
+  const lastY = isBranchOrMerge ? 100 : startY + (commitCount - 1) * nodeSpacing;
+
+  // Main trunk line endpoint
+  const lineEndY = isMerged
+    ? 380
+    : shouldDrawBranch
+    ? 220
     : startY + (commitCount - 1) * nodeSpacing + 35;
-  const badgeY = shouldDrawBranch
-    ? lastY + 120
+
+  // Badge Y positions: slide to 380 when merged, otherwise 220
+  const badgeY = isMerged
+    ? 380
+    : shouldDrawBranch
+    ? 220
     : lineEndY + 12;
-  const svgHeight = shouldDrawBranch
+
+  const branchBadgeY = isMerged ? 380 : 220;
+
+  // Dynamically scaling SVG height to prevent clipping
+  const svgHeight = isMerged
+    ? Math.max(480, commitCount * 150)
+    : shouldDrawBranch
     ? Math.max(300, lastY + 250)
     : Math.max(240, 100 + commitCount * 80);
 
@@ -86,13 +119,12 @@ export default function TimelineGraph({
   const repoNameTextLength = Math.max(displayRepoName.length * 8.5, 90);
   const defaultBadgeWidth = Math.max(220, repoNameTextLength + 100);
 
-  const mainBadgeWidth = shouldDrawBranch ? 100 : defaultBadgeWidth;
-  const mainBadgeX = shouldDrawBranch ? 50 - mainBadgeWidth / 2 : 30;
+  const mainBadgeWidth = isBranchOrMerge ? 100 : defaultBadgeWidth;
+  const mainBadgeX = isBranchOrMerge ? 50 - mainBadgeWidth / 2 : 30;
 
   const branchBadgeWidth = Math.max(130, Math.min(190, (customBranch?.length || 0) * 8.5 + 40));
   const branchBadgeHeight = 36;
   const branchBadgeX = 320 - branchBadgeWidth / 2;
-  const branchBadgeY = lastY + 120;
 
   return (
     <div className="w-full bg-[#F8F4E8] border-2 border-[#09090B] rounded-[12px] p-5 sm:p-6 shadow-[4px_4px_0px_0px_#09090B] mt-6 relative select-none">
@@ -107,7 +139,7 @@ export default function TimelineGraph({
               DAG TIMELINE // {hasActiveRepo ? 'ACTIVE DAG GRAPH' : 'EMPTY REPO LEDGER'}
             </h3>
             <span className="font-mono-brutal text-[10px] font-bold text-[#09090B]/60 uppercase">
-              SVG VECTOR GRAPH &bull; {shouldDrawBranch ? 'ORTHOGONAL BRANCH GRAPH' : 'STRICT LINEAR TIMELINE'} &bull; {stageName}
+              SVG VECTOR GRAPH &bull; {isMerged ? 'MERGED CONVERGENCE GRAPH' : shouldDrawBranch ? 'ORTHOGONAL BRANCH GRAPH' : 'STRICT LINEAR TIMELINE'} &bull; {stageName}
             </span>
           </div>
         </div>
@@ -185,7 +217,7 @@ export default function TimelineGraph({
                 className="w-full min-w-[460px] transition-all"
                 height={svgHeight}
                 style={{ height: `${svgHeight}px`, minHeight: `${svgHeight}px` }}
-                viewBox={`0 0 520 ${svgHeight}`}
+                viewBox={`0 ${isBranchOrMerge ? -15 : 0} 520 ${svgHeight + (isBranchOrMerge ? 15 : 0)}`}
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -202,7 +234,12 @@ export default function TimelineGraph({
                 </defs>
 
                 {/* Blueprint background grid */}
-                <rect width="520" height={svgHeight} fill="url(#timeline-grid-pattern)" />
+                <rect
+                  y={isBranchOrMerge ? -15 : 0}
+                  width="520"
+                  height={svgHeight + (isBranchOrMerge ? 15 : 0)}
+                  fill="url(#timeline-grid-pattern)"
+                />
 
                 {/* ============================================================ */}
                 {/* CENTRAL 4px #FF3333 VERTICAL LINE WITH DYNAMIC EXTENSION    */}
@@ -241,21 +278,22 @@ export default function TimelineGraph({
                 {/* COMMIT NODES (Mapped from commits array)                    */}
                 {/* ============================================================ */}
                 {commitList.map((commit, idx) => {
-                  const nodeY = startY + idx * nodeSpacing;
+                  const nodeY = getNodeY(idx);
                   const commitMsg = commit.message || commit.label || 'snapshot';
                   const isLastCommit = idx === commitCount - 1;
+                  const isMergeNode = commitMsg.toLowerCase().includes('merge') || (isMerged && idx === commitCount - 1);
 
                   const NodeContent = (
                     <g key={commit.id || idx}>
-                      {/* Black square commit node #09090B with #FF3333 border */}
+                      {/* Black square commit node #09090B with #FF3333 or #D2E823 border */}
                       <rect
                         x={lineStartX - 8}
                         y={nodeY - 8}
                         width="16"
                         height="16"
                         fill="#09090B"
-                        stroke="#FF3333"
-                        strokeWidth="2"
+                        stroke={isMergeNode ? '#D2E823' : '#FF3333'}
+                        strokeWidth={isMergeNode ? '2.5' : '2'}
                       />
 
                       {/* Text Labels: commit ID and message */}
@@ -274,7 +312,7 @@ export default function TimelineGraph({
                         className="font-mono-brutal text-[10px] font-bold fill-[#09090B]/50 uppercase"
                       >
                         SHA: {commit.hash || (idx === 0 ? '9a01fd2' : 'e89f41b')}
-                        {isLastCommit ? ` • HEAD -> ${mainBranchName}` : ''}
+                        {isMergeNode ? ` • MERGE COMMIT -> ${mainBranchName}` : isLastCommit ? ` • HEAD -> ${mainBranchName}` : ''}
                       </text>
                     </g>
                   );
@@ -356,6 +394,53 @@ export default function TimelineGraph({
                 )}
 
                 {/* ============================================================ */}
+                {/* CONVERGENCE PATH: MERGES BRANCH BACK TO MAIN TRUNK           */}
+                {/* ============================================================ */}
+                {isMerged && (
+                  <g key="convergence-branch-group">
+                    {/* Dark under-path for brutalist contrast */}
+                    <motion.path
+                      d="M 320 220 L 320 300 L 50 300"
+                      fill="none"
+                      stroke="#09090B"
+                      strokeWidth="6"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 0.8, ease: "easeInOut" }}
+                    />
+
+                    {/* Acid Yellow (#D2E823) 4px stroke */}
+                    <motion.path
+                      d="M 320 220 L 320 300 L 50 300"
+                      fill="none"
+                      stroke="#D2E823"
+                      strokeWidth="4"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ duration: 0.8, ease: "easeInOut" }}
+                    />
+
+                    {/* Convergence turn corner marker at (320, 300) */}
+                    <motion.rect
+                      x={320 - 4}
+                      y={300 - 4}
+                      width="8"
+                      height="8"
+                      fill="#D2E823"
+                      stroke="#09090B"
+                      strokeWidth="1.5"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.4, duration: 0.2 }}
+                    />
+                  </g>
+                )}
+
+                {/* ============================================================ */}
                 {/* NEO-BRUTALIST BADGES AT THE BOTTOM OF THE LINE              */}
                 {/* ============================================================ */}
                 <motion.g
@@ -367,7 +452,7 @@ export default function TimelineGraph({
                       : { y: badgeY }
                   }
                   animate={{ opacity: 1, y: badgeY }}
-                  transition={{ duration: 0.5, ease: 'easeOut', delay: shouldAnimateGenesis ? 0.7 : 0.2 }}
+                  transition={{ duration: 0.6, ease: 'easeInOut', delay: shouldAnimateGenesis ? 0.7 : 0.1 }}
                 >
                   {/* Hard Shadow for badge */}
                   <rect
@@ -415,15 +500,15 @@ export default function TimelineGraph({
                     y="23"
                     className="font-mono-brutal font-bold text-xs fill-[#09090B]"
                   >
-                    {shouldDrawBranch
+                    {isBranchOrMerge
                       ? (displayRepoName.length > 5 ? `${displayRepoName.slice(0, 4)}…` : displayRepoName)
                       : displayRepoName}
                   </text>
 
                   {/* Main Branch Pill inside badge */}
-                  <g transform={`translate(${mainBadgeX + mainBadgeWidth - (shouldDrawBranch ? 44 : 52)}, 6)`}>
+                  <g transform={`translate(${mainBadgeX + mainBadgeWidth - (isBranchOrMerge ? 44 : 52)}, 6)`}>
                     <rect
-                      width={shouldDrawBranch ? 38 : 46}
+                      width={isBranchOrMerge ? 38 : 46}
                       height="24"
                       rx="4"
                       fill="#09090B"
@@ -431,14 +516,14 @@ export default function TimelineGraph({
                       strokeWidth="1"
                     />
                     <rect
-                      x={shouldDrawBranch ? 4 : 5}
+                      x={isBranchOrMerge ? 4 : 5}
                       y="8"
-                      width={shouldDrawBranch ? 6 : 8}
-                      height={shouldDrawBranch ? 6 : 8}
+                      width={isBranchOrMerge ? 6 : 8}
+                      height={isBranchOrMerge ? 6 : 8}
                       fill="#FF3333"
                     />
                     <text
-                      x={shouldDrawBranch ? 22 : 26}
+                      x={isBranchOrMerge ? 22 : 26}
                       y="16"
                       textAnchor="middle"
                       className="font-mono-brutal font-bold text-[10px] fill-[#FFFFFF]"
@@ -449,19 +534,22 @@ export default function TimelineGraph({
                 </motion.g>
 
                 {/* ============================================================ */}
-                {/* BRANCH BADGE (CENTERED AT END OF NEW PATH: x=320, y=lastY+120)*/}
+                {/* BRANCH BADGE (SLIDES TO 380 WHEN MERGED, OTHERWISE 220)      */}
                 {/* ============================================================ */}
                 {shouldDrawBranch && (
                   <motion.g
                     key="custom-branch-badge"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.8, duration: 0.3 }}
+                    initial={{ opacity: 0, y: branchBadgeY }}
+                    animate={{ opacity: 1, y: branchBadgeY }}
+                    transition={{
+                      y: { duration: 0.6, ease: 'easeInOut' },
+                      opacity: { delay: 0.8, duration: 0.3 },
+                    }}
                   >
                     {/* Hard Shadow for Branch Badge */}
                     <rect
                       x={branchBadgeX + 3}
-                      y={branchBadgeY + 3}
+                      y="3"
                       width={branchBadgeWidth}
                       height={branchBadgeHeight}
                       rx="6"
@@ -471,7 +559,7 @@ export default function TimelineGraph({
                     {/* Badge Base Card in Acid Yellow #D2E823 */}
                     <rect
                       x={branchBadgeX}
-                      y={branchBadgeY}
+                      y="0"
                       width={branchBadgeWidth}
                       height={branchBadgeHeight}
                       rx="6"
@@ -483,34 +571,34 @@ export default function TimelineGraph({
                     {/* Branch Icon Box */}
                     <rect
                       x={branchBadgeX + 6}
-                      y={branchBadgeY + 6}
+                      y="6"
                       width="24"
                       height="24"
                       rx="4"
                       fill="#09090B"
                     />
                     <path
-                      d={`M ${branchBadgeX + 15} ${branchBadgeY + 10} v 13 M ${branchBadgeX + 15} ${branchBadgeY + 17} c 0 -3 3.5 -3.5 6.5 -3.5`}
+                      d={`M ${branchBadgeX + 15} 10 v 13 M ${branchBadgeX + 15} 17 c 0 -3 3.5 -3.5 6.5 -3.5`}
                       fill="none"
                       stroke="#D2E823"
                       strokeWidth="1.6"
                       strokeLinecap="round"
                     />
-                    <circle cx={branchBadgeX + 15} cy={branchBadgeY + 10} r="1.5" fill="#D2E823" />
-                    <circle cx={branchBadgeX + 21.5} cy={branchBadgeY + 13.5} r="1.5" fill="#D2E823" />
-                    <circle cx={branchBadgeX + 15} cy={branchBadgeY + 23} r="1.5" fill="#D2E823" />
+                    <circle cx={branchBadgeX + 15} cy="10" r="1.5" fill="#D2E823" />
+                    <circle cx={branchBadgeX + 21.5} cy="13.5" r="1.5" fill="#D2E823" />
+                    <circle cx={branchBadgeX + 15} cy="23" r="1.5" fill="#D2E823" />
 
                     {/* Branch Name Text */}
                     <text
                       x={branchBadgeX + 36}
-                      y={branchBadgeY + 22}
+                      y="22"
                       className="font-mono-brutal font-bold text-xs fill-[#09090B]"
                     >
                       {customBranch && customBranch.length > 13 ? `${customBranch.slice(0, 12)}…` : customBranch}
                     </text>
 
                     {/* Neo-brutalist BRANCH pill on the right */}
-                    <g transform={`translate(${branchBadgeX + branchBadgeWidth - 52}, ${branchBadgeY + 6})`}>
+                    <g transform={`translate(${branchBadgeX + branchBadgeWidth - 52}, 6)`}>
                       <rect
                         width="46"
                         height="24"
@@ -525,7 +613,7 @@ export default function TimelineGraph({
                         textAnchor="middle"
                         className="font-mono-brutal font-bold text-[9px] fill-[#D2E823]"
                       >
-                        BRANCH
+                        {isMerged ? 'MERGED' : 'BRANCH'}
                       </text>
                     </g>
                   </motion.g>
@@ -552,7 +640,7 @@ export default function TimelineGraph({
           </span>
           {shouldDrawBranch && (
             <span className="border-l border-[#09090B]/30 pl-2 text-emerald-800 font-bold">
-              BRANCH: {customBranch} [DIVERGENT]
+              BRANCH: {customBranch} {isMerged ? '[MERGED CONVERGENCE]' : '[DIVERGENT]'}
             </span>
           )}
         </div>

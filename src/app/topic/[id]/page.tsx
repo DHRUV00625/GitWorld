@@ -399,7 +399,13 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
         errorMessage: `Unrecognized action '${tokens[1]}'. Stage 04 teaches merging branches. Expected: '${topic.hint}'.`,
       };
     }
-    const targetBranch = tokens[2] || 'feature/quantum-leap';
+    const targetBranch = tokens[2];
+    if (!targetBranch) {
+      return {
+        isValid: false,
+        errorMessage: `Incomplete merge syntax: No branch specified. Use 'git merge <branch-name>'. Expected: '${topic.hint}'.`,
+      };
+    }
     return { isValid: true, capturedArg: targetBranch };
   }
 
@@ -452,6 +458,8 @@ export default function TopicDetailPage() {
     completedTopics,
     commits,
     addCommit,
+    isMerged,
+    setIsMerged,
   } = useGitStore();
 
   const activeRepo = repo_name || repoName || '';
@@ -602,6 +610,24 @@ export default function TopicDetailPage() {
       setCurrentBranch(customBranch);
       setCreatedBranchName(customBranch);
       updatedBranch = customBranch;
+    } else if (topic.id === 'merging') {
+      const targetBranch = validation.capturedArg || '';
+      const activeBranch = currentBranch && currentBranch !== 'main' ? currentBranch : 'feature/quantum-leap';
+      if (targetBranch !== activeBranch && targetBranch !== currentBranch) {
+        const mismatchMsg = `> fatal: '${targetBranch}' does not match active branch '${activeBranch}'. Expected: 'git merge ${activeBranch}'`;
+        setErrorFeedback(mismatchMsg);
+        setTerminalHistory((prev) => [
+          ...prev,
+          { text: mismatchMsg, isError: true },
+        ]);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 50);
+        return;
+      }
+      setIsMerged(true);
+      const randomHash = Math.random().toString(16).slice(2, 9);
+      addCommit(`merge ${currentBranch}`, randomHash);
     }
 
     addCompletedCommand(cmd);
@@ -937,16 +963,24 @@ export default function TopicDetailPage() {
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4" />
                       <span className="font-bold uppercase">
-                        {topic.id === 'branching' ? 'POINTER REF CREATED' : 'CRYPTOGRAPHIC DAG GENERATED'}
+                        {topic.id === 'branching'
+                          ? 'POINTER REF CREATED'
+                          : topic.id === 'merging'
+                          ? 'TIMELINE CONVERGENCE COMPLETE'
+                          : 'CRYPTOGRAPHIC DAG GENERATED'}
                       </span>
                     </div>
                     <div className="text-[11px] text-[#A1A1AA]">
                       {topic.id === 'branching'
                         ? `> Branch pointer: refs/heads/${currentBranch || createdBranchName || 'feature/quantum-leap'} -> HEAD`
+                        : topic.id === 'merging'
+                        ? `> Merge commit created: refs/heads/main (Merged ${currentBranch || 'feature/quantum-leap'})`
                         : `> Object: commit e89f41b2c7... (tree 9a01fd...)`}
                     </div>
                     <div className="text-[11px] text-[#A1A1AA]">
-                      &gt; Ref updated: refs/heads/{currentBranch || createdBranchName || 'main'}
+                      {topic.id === 'merging'
+                        ? '> Fast-Forward 3-way merge reconciled into primary trunk.'
+                        : `> Ref updated: refs/heads/${currentBranch || createdBranchName || 'main'}`}
                     </div>
                   </motion.div>
                 )}
@@ -998,6 +1032,7 @@ export default function TopicDetailPage() {
                 mainBranchName="main"
                 customBranch={topic.id === 'init' || topic.id === 'commit' ? 'main' : (currentBranch || createdBranchName)}
                 stageName={topic.stageName}
+                isMerged={topic.id === 'merging' ? isMerged : false}
               />
             </div>
 
