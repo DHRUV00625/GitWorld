@@ -423,7 +423,22 @@ function validateGitCommand(input: string, topic: TopicMeta): ValidationResult {
         errorMessage: `Unrecognized action '${tokens[1]}'. Stage 05 teaches syncing remotes with 'git push'. Expected: '${topic.hint}'.`,
       };
     }
-    return { isValid: true };
+
+    if (tokens.length < 3 || tokens[2].toLowerCase() !== 'origin') {
+      return {
+        isValid: false,
+        errorMessage: `Missing or invalid remote specification. Expected: 'git push origin <branch>' (e.g. '${topic.hint}').`,
+      };
+    }
+
+    if (tokens.length < 4 || !tokens[3]) {
+      return {
+        isValid: false,
+        errorMessage: `Missing branch to push. Expected: 'git push origin <branch>' (e.g. '${topic.hint}').`,
+      };
+    }
+
+    return { isValid: true, capturedArg: tokens[3] };
   }
 
   // Fallback pattern match
@@ -460,6 +475,8 @@ export default function TopicDetailPage() {
     addCommit,
     isMerged,
     setIsMerged,
+    isPushed,
+    setIsPushed,
   } = useGitStore();
 
   const activeRepo = repo_name || repoName || '';
@@ -636,6 +653,22 @@ export default function TopicDetailPage() {
       setIsMerged(true);
       const randomHash = Math.random().toString(16).slice(2, 9);
       addCommit(`merge ${currentBranch}`, randomHash);
+    } else if (topic.id === 'remote') {
+      const targetBranch = validation.capturedArg || '';
+      const activeBranch = currentBranch || 'main';
+      if (targetBranch !== activeBranch && targetBranch !== 'main' && targetBranch !== currentBranch) {
+        const mismatchMsg = `> fatal: remote branch '${targetBranch}' does not match active branch '${activeBranch}'. Expected: 'git push origin ${activeBranch}'`;
+        setErrorFeedback(mismatchMsg);
+        setTerminalHistory((prev) => [
+          ...prev,
+          { text: mismatchMsg, isError: true },
+        ]);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 50);
+        return;
+      }
+      setIsPushed(true);
     }
 
     addCompletedCommand(cmd);
@@ -1037,17 +1070,50 @@ export default function TopicDetailPage() {
             {/* ========================================================= */}
             {/* VISUAL TIMELINE: Below Terminal (TimelineGraph)           */}
             {/* ========================================================= */}
-            <div>
-              <TimelineGraph
-                commits={commits}
-                isInitialized={topic.id === 'init' ? Boolean(simulatedRepoName || activeRepo) : true}
-                repoName={repoName || repo_name || simulatedRepoName || (topic.id === 'init' ? '' : 'gitworld-project')}
-                repo_name={repo_name || repoName || simulatedRepoName || (topic.id === 'init' ? '' : 'gitworld-project')}
-                mainBranchName="main"
-                customBranch={topic.id === 'init' || topic.id === 'commit' ? 'main' : (currentBranch || createdBranchName)}
-                stageName={topic.stageName}
-                isMerged={topic.id === 'merging' ? isMerged : false}
-              />
+            <div className="flex w-full gap-4 items-start overflow-hidden">
+              <motion.div
+                layout
+                animate={{ scale: isPushed ? 0.85 : 1, transformOrigin: 'top left' }}
+                className="flex-1"
+              >
+                <h3 className="mb-2 font-bold text-[10px] tracking-widest text-zinc-500 uppercase">
+                  Local Repository Status
+                </h3>
+                <TimelineGraph
+                  commits={commits}
+                  isInitialized={topic.id === 'init' ? Boolean(simulatedRepoName || activeRepo) : true}
+                  repoName={repoName || repo_name || simulatedRepoName || (topic.id === 'init' ? '' : 'gitworld-project')}
+                  repo_name={repo_name || repoName || simulatedRepoName || (topic.id === 'init' ? '' : 'gitworld-project')}
+                  mainBranchName="main"
+                  customBranch={topic.id === 'init' || topic.id === 'commit' ? 'main' : (currentBranch || createdBranchName)}
+                  stageName={topic.stageName}
+                  isMerged={topic.id === 'merging' ? isMerged : (topic.id === 'remote' ? true : false)}
+                />
+              </motion.div>
+
+              {isPushed && (
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="flex-1"
+                >
+                  <h3 className="mb-2 font-bold text-[10px] tracking-widest text-[#D2E823] uppercase">
+                    Remote Repository
+                  </h3>
+                  <TimelineGraph
+                    commits={commits}
+                    isInitialized={true}
+                    repoName={repoName || repo_name || simulatedRepoName || (topic.id === 'init' ? '' : 'gitworld-project')}
+                    repo_name={repo_name || repoName || simulatedRepoName || (topic.id === 'init' ? '' : 'gitworld-project')}
+                    mainBranchName="main"
+                    customBranch={topic.id === 'init' || topic.id === 'commit' ? 'main' : (currentBranch || createdBranchName)}
+                    stageName={topic.stageName}
+                    isMerged={true}
+                    isRemoteMode={true}
+                  />
+                </motion.div>
+              )}
             </div>
 
             {/* QUEST COMPLETE Badge & Next/Back Buttons */}

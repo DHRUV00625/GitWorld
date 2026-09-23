@@ -24,6 +24,7 @@ export interface TimelineGraphProps {
   customBranch?: string | null;
   stageName?: string;
   isMerged?: boolean;
+  isRemoteMode?: boolean;
 }
 
 export default function TimelineGraph({
@@ -35,6 +36,7 @@ export default function TimelineGraph({
   customBranch = null,
   stageName = 'TIMELINE',
   isMerged: propIsMerged,
+  isRemoteMode = false,
 }: TimelineGraphProps) {
   const storeIsMerged = useGitStore((state) => state.isMerged);
   const isMerged = Boolean(propIsMerged ?? storeIsMerged);
@@ -253,14 +255,20 @@ export default function TimelineGraph({
                   strokeWidth="4"
                   strokeLinecap="square"
                   initial={
-                    shouldAnimateGenesis
+                    isRemoteMode
+                      ? { pathLength: 0 }
+                      : shouldAnimateGenesis
                       ? { pathLength: 0 }
                       : hasNewCommit && commitCount > 1
                       ? { y2: lineEndY - nodeSpacing }
                       : { y2: lineEndY }
                   }
                   animate={{ pathLength: 1, y2: lineEndY }}
-                  transition={{ duration: 0.65, ease: [0.77, 0, 0.175, 1] }}
+                  transition={{
+                    duration: 0.65,
+                    ease: [0.77, 0, 0.175, 1],
+                    delay: isRemoteMode ? 0.5 : 0,
+                  }}
                 />
 
                 {/* Top Origin Indicator Dot */}
@@ -277,14 +285,15 @@ export default function TimelineGraph({
                 {/* ============================================================ */}
                 {/* COMMIT NODES (Mapped from commits array)                    */}
                 {/* ============================================================ */}
-                {commitList.map((commit, idx) => {
-                  const nodeY = getNodeY(idx);
+                {commitList.map((commit, index) => {
+                  const idx = index;
+                  const nodeY = getNodeY(index);
                   const commitMsg = commit.message || commit.label || 'snapshot';
-                  const isLastCommit = idx === commitCount - 1;
-                  const isMergeNode = commitMsg.toLowerCase().includes('merge') || (isMerged && idx === commitCount - 1);
+                  const isLastCommit = index === commitCount - 1;
+                  const isMergeNode = commitMsg.toLowerCase().includes('merge') || (isMerged && index === commitCount - 1);
 
                   const NodeContent = (
-                    <g key={commit.id || idx}>
+                    <g key={commit.id || index}>
                       {/* Black square commit node #09090B with #FF3333 or #D2E823 border */}
                       <rect
                         x={lineStartX - 8}
@@ -302,7 +311,7 @@ export default function TimelineGraph({
                         y={nodeY + 4}
                         className="font-mono-brutal font-bold text-[12px] fill-[#09090B]"
                       >
-                        c{idx} [{commitMsg}]
+                        c{index} [{commitMsg}]
                       </text>
 
                       {/* Mock hash sub-label */}
@@ -311,16 +320,32 @@ export default function TimelineGraph({
                         y={nodeY + 18}
                         className="font-mono-brutal text-[10px] font-bold fill-[#09090B]/50 uppercase"
                       >
-                        SHA: {commit.hash || (idx === 0 ? '9a01fd2' : 'e89f41b')}
+                        SHA: {commit.hash || (index === 0 ? '9a01fd2' : 'e89f41b')}
                         {isMergeNode ? ` • MERGE COMMIT -> ${mainBranchName}` : isLastCommit ? ` • HEAD -> ${mainBranchName}` : ''}
                       </text>
                     </g>
                   );
 
+                  if (isRemoteMode) {
+                    return (
+                      <motion.g
+                        key={`remote-node-${commit.id || index}`}
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{
+                          duration: 0.45,
+                          delay: isRemoteMode ? 1.0 + (index * 0.8) : 0.8,
+                        }}
+                      >
+                        {NodeContent}
+                      </motion.g>
+                    );
+                  }
+
                   if (commit.isNew) {
                     return (
                       <motion.g
-                        key={commit.id || idx}
+                        key={commit.id || index}
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.45, delay: 0.25 }}
@@ -333,7 +358,7 @@ export default function TimelineGraph({
                   if (shouldAnimateGenesis) {
                     return (
                       <motion.g
-                        key={commit.id || idx}
+                        key={commit.id || index}
                         initial={{ opacity: 0, scale: 0.6 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.5, duration: 0.3 }}
@@ -343,7 +368,7 @@ export default function TimelineGraph({
                     );
                   }
 
-                  return <g key={commit.id || idx}>{NodeContent}</g>;
+                  return <g key={commit.id || index}>{NodeContent}</g>;
                 })}
 
                 {/* ============================================================ */}
@@ -361,7 +386,7 @@ export default function TimelineGraph({
                       strokeLinejoin="miter"
                       initial={{ pathLength: 0 }}
                       animate={{ pathLength: 1 }}
-                      transition={{ duration: 0.8, ease: "easeInOut" }}
+                      transition={{ duration: 0.8, ease: "easeInOut", delay: isRemoteMode ? 2.6 : 0 }}
                     />
 
                     {/* Acid Yellow (#D2E823) 4px stroke */}
@@ -374,7 +399,7 @@ export default function TimelineGraph({
                       strokeLinejoin="miter"
                       initial={{ pathLength: 0 }}
                       animate={{ pathLength: 1 }}
-                      transition={{ duration: 0.8, ease: "easeInOut" }}
+                      transition={{ duration: 0.8, ease: "easeInOut", delay: isRemoteMode ? 2.6 : 0 }}
                     />
 
                     {/* Branch Divergence Corner Node at turn (320, lastY + 55) */}
@@ -388,7 +413,7 @@ export default function TimelineGraph({
                       strokeWidth="1.5"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={{ delay: 0.4, duration: 0.2 }}
+                      transition={{ delay: isRemoteMode ? 3.0 : 0.4, duration: 0.2 }}
                     />
                   </g>
                 )}
@@ -408,7 +433,7 @@ export default function TimelineGraph({
                       strokeLinejoin="miter"
                       initial={{ pathLength: 0 }}
                       animate={{ pathLength: 1 }}
-                      transition={{ duration: 0.8, ease: "easeInOut" }}
+                      transition={{ duration: 0.8, ease: "easeInOut", delay: isRemoteMode ? 4.2 : 0 }}
                     />
 
                     {/* Acid Yellow (#D2E823) 4px stroke */}
@@ -421,7 +446,7 @@ export default function TimelineGraph({
                       strokeLinejoin="miter"
                       initial={{ pathLength: 0 }}
                       animate={{ pathLength: 1 }}
-                      transition={{ duration: 0.8, ease: "easeInOut" }}
+                      transition={{ duration: 0.8, ease: "easeInOut", delay: isRemoteMode ? 4.2 : 0 }}
                     />
 
                     {/* Convergence turn corner marker at (320, 300) */}
@@ -435,7 +460,7 @@ export default function TimelineGraph({
                       strokeWidth="1.5"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      transition={{ delay: 0.4, duration: 0.2 }}
+                      transition={{ delay: isRemoteMode ? 4.6 : 0.4, duration: 0.2 }}
                     />
                   </g>
                 )}
@@ -542,8 +567,9 @@ export default function TimelineGraph({
                     initial={{ opacity: 0, y: branchBadgeY }}
                     animate={{ opacity: 1, y: branchBadgeY }}
                     transition={{
-                      y: { duration: 0.6, ease: 'easeInOut' },
-                      opacity: { delay: 0.8, duration: 0.3 },
+                      y: { duration: 0.6, ease: 'easeInOut', delay: isRemoteMode ? 3.4 : 0 },
+                      opacity: { delay: isRemoteMode ? 3.4 : 0.8, duration: 0.3 },
+                      delay: isRemoteMode ? 3.4 : 0.8,
                     }}
                   >
                     {/* Hard Shadow for Branch Badge */}
