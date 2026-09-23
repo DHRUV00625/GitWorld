@@ -1,7 +1,6 @@
 # ⚡ GitWorld
 
-> **The Neo-Brutalist Interactive Git Learning Universe**  
-> Master Git primitives through hands-on failsafe terminal sandboxes, real-time orthogonal DAG branch visualizers, and structured theory bentos.
+> **Master Git visually. Instead of sifting through walls of dry documentation, GitWorld combines hands-on terminal simulation with real-time, animated vector visualizations to show you exactly how your branch history evolves.
 
 🌐 **Live Application**: [https://git-world-is-born.vercel.app](https://git-world-is-born.vercel.app)
 
