@@ -1070,11 +1070,10 @@ export default function TopicDetailPage() {
             {/* ========================================================= */}
             {/* VISUAL TIMELINE: Below Terminal (TimelineGraph)           */}
             {/* ========================================================= */}
-            <div className="flex w-full gap-4 items-start overflow-hidden">
+            <div className="flex w-full gap-2 items-start overflow-hidden">
               <motion.div
                 layout
-                animate={{ scale: isPushed ? 0.85 : 1, transformOrigin: 'top left' }}
-                className="flex-1"
+                animate={{ scale: isPushed ? 0.7 : 1, width: isPushed ? '50%' : '100%', transformOrigin: 'top left' }}
               >
                 <h3 className="mb-2 font-bold text-[10px] tracking-widest text-zinc-500 uppercase">
                   Local Repository Status
@@ -1093,10 +1092,10 @@ export default function TopicDetailPage() {
 
               {isPushed && (
                 <motion.div
-                  initial={{ opacity: 0, x: 50 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, x: 50, scale: 0.7 }}
+                  animate={{ opacity: 1, x: 0, scale: 0.7 }}
                   transition={{ duration: 0.5 }}
-                  className="flex-1"
+                  className="w-[50%] origin-top-left"
                 >
                   <h3 className="mb-2 font-bold text-[10px] tracking-widest text-[#D2E823] uppercase">
                     Remote Repository
