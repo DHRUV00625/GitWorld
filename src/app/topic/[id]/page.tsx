@@ -553,6 +553,14 @@ export default function TopicDetailPage() {
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [terminalHistory, showAnimation, showSuccessBadge, errorFeedback]);
 
+  // Retry / reset terminal input after syntax fault
+  const handleRetry = () => {
+    setErrorFeedback(null);
+    setTerminalInput('');
+    setIsCommandLocked(false);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
   // Command submission logic
   const handleCommandSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -950,6 +958,12 @@ export default function TopicDetailPage() {
                       </span>
                     </div>
                     <p className="leading-relaxed">{errorFeedback}</p>
+                    <button
+                      onClick={handleRetry}
+                      className="mt-4 px-4 py-2 bg-[#09090B] text-[#D2E823] font-bold uppercase text-sm border-2 border-transparent hover:border-[#09090B] hover:bg-white hover:text-[#09090B] transition-colors"
+                    >
+                      [ Try Again ↵ ]
+                    </button>
                   </motion.div>
                 )}
 
