@@ -216,10 +216,8 @@ export default function TimelineGraph({
               className="relative w-full"
             >
               <motion.svg
-                className="w-full min-w-[460px] transition-all"
-                height={svgHeight}
-                style={{ height: `${svgHeight}px`, minHeight: `${svgHeight}px` }}
-                viewBox={`0 ${isBranchOrMerge ? -15 : 0} 520 ${svgHeight + (isBranchOrMerge ? 15 : 0)}`}
+                className="w-full h-auto overflow-visible"
+                viewBox={`0 0 400 ${Math.max(450, commits.length * 130)}`}
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -237,9 +235,8 @@ export default function TimelineGraph({
 
                 {/* Blueprint background grid */}
                 <rect
-                  y={isBranchOrMerge ? -15 : 0}
-                  width="520"
-                  height={svgHeight + (isBranchOrMerge ? 15 : 0)}
+                  width="100%"
+                  height="100%"
                   fill="url(#timeline-grid-pattern)"
                 />
 

@@ -1070,12 +1070,13 @@ export default function TopicDetailPage() {
             {/* ========================================================= */}
             {/* VISUAL TIMELINE: Below Terminal (TimelineGraph)           */}
             {/* ========================================================= */}
-            <div className="flex w-full gap-2 items-start overflow-hidden">
+            <div className="flex w-full gap-8 items-start overflow-hidden justify-center">
               <motion.div
                 layout
-                animate={{ scale: isPushed ? 0.7 : 1, width: isPushed ? '50%' : '100%', transformOrigin: 'top left' }}
+                animate={{ width: isPushed ? '50%' : '100%' }}
+                className="flex flex-col"
               >
-                <h3 className="mb-2 font-bold text-[10px] tracking-widest text-zinc-500 uppercase">
+                <h3 className="mb-4 text-center font-bold text-[10px] tracking-widest text-zinc-500 uppercase">
                   Local Repository Status
                 </h3>
                 <TimelineGraph
@@ -1092,12 +1093,12 @@ export default function TopicDetailPage() {
 
               {isPushed && (
                 <motion.div
-                  initial={{ opacity: 0, x: 50, scale: 0.7 }}
-                  animate={{ opacity: 1, x: 0, scale: 0.7 }}
+                  initial={{ opacity: 0, width: '0%' }}
+                  animate={{ opacity: 1, width: '50%' }}
                   transition={{ duration: 0.5 }}
-                  className="w-[50%] origin-top-left"
+                  className="flex flex-col border-l-2 border-dashed border-zinc-800 pl-8"
                 >
-                  <h3 className="mb-2 font-bold text-[10px] tracking-widest text-[#D2E823] uppercase">
+                  <h3 className="mb-4 text-center font-bold text-[10px] tracking-widest text-[#D2E823] uppercase">
                     Remote Repository
                   </h3>
                   <TimelineGraph
