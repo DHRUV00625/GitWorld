@@ -47,10 +47,10 @@ export default function TimelineGraph({
   const shouldDrawBranch = Boolean(customBranch && customBranch.trim() !== '' && customBranch !== 'main');
 
   // Track initial transition from empty to populated
-  const prevRepoNameRef = useRef<string>(cleanRepoName);
+  const [prevRepoName, setPrevRepoName] = useState<string>(cleanRepoName);
   const [hasAnimatedGenesis, setHasAnimatedGenesis] = useState<boolean>(false);
 
-  const isTransitioningFromEmpty = (!prevRepoNameRef.current && hasActiveRepo);
+  const isTransitioningFromEmpty = !prevRepoName && hasActiveRepo;
   const shouldAnimateGenesis = isTransitioningFromEmpty && !hasAnimatedGenesis;
 
   useEffect(() => {
@@ -63,8 +63,10 @@ export default function TimelineGraph({
   }, [shouldAnimateGenesis]);
 
   useEffect(() => {
-    prevRepoNameRef.current = cleanRepoName;
-  }, [cleanRepoName]);
+    if (cleanRepoName !== prevRepoName) {
+      setPrevRepoName(cleanRepoName);
+    }
+  }, [cleanRepoName, prevRepoName]);
 
   const commitList = commits && commits.length > 0
     ? commits
@@ -216,11 +218,14 @@ export default function TimelineGraph({
               className="relative w-full"
             >
               <motion.svg
+                role="img"
+                aria-label="Interactive Git DAG visualization"
                 className={`w-full h-auto overflow-visible ${!isRemoteMode ? 'max-w-md mx-auto' : ''}`}
                 viewBox={`0 0 400 ${Math.max(450, commits.length * 130)}`}
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
+                <title>Git Directed Acyclic Graph Timeline</title>
                 <defs>
                   <pattern
                     id="timeline-grid-pattern"
